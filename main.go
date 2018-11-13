@@ -65,11 +65,12 @@ func buildNotes() {
             htmlname := strings.TrimSuffix(f.Name(), ext) + ".html"
             out, _ := os.Create(filepath.Join(curdir, "sys", "www", htmlname))
             title := "Test Title"
-            out.WriteString(` <!DOCTYPE html> <html lang="en"> <head> <meta charset="UTF-8">` + "\n")
+            out.WriteString(` <!DOCTYPE html> <html width="97%"lang="en"> <head> <meta charset="UTF-8">` + "\n")
             out.WriteString("<title>" + title + "</title>" + "\n")
             out.WriteString(`<link href="css/prism.css" rel="stylesheet" />` + "\n")
+            out.WriteString(`<link href="css/normalize.css" rel="stylesheet" />` + "\n")
             out.WriteString("</head>" + "\n")
-            out.WriteString("<body>" + "\n")
+            out.WriteString(`<body style="margin:5%">` + "\n")
 
             defer out.Close()
 
