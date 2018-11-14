@@ -65,37 +65,50 @@
     使用 `@<somthing>` 表示一个链接, 可以是本地的也可以是远程的,
     如果是本地的, 文件将会被拷贝到静态目录里面, 然后上传到远程服务器上,
     @ 会被渲染成一个链接.
+
+# 其他特殊要求
+
+- 最后一行必须为空行
     
 
 # 架构设计
 
 ```
-sys/
-    etc/   # pigger 系统配置文件
-       ├── css/
-       │   ├── normalize.css
-       │   └── pigger.css
-       └── themes/
-           └── default.json
-    www/      # 生成的 html
+// 静态资源
+etc/   # pigger 系统配置文件
+   ├── css/
+   │   ├── normalize.css
+   │   └── pigger.css
+   └── themes/
+       └── default.json
+
+// 新建目录
+SITE/
+    3w/         # 输出目录
+        css/
         images/ # 图片
         videos/ # 视频
         aritcle-demo.html # 生成的样例文章
         text-demo.html # 生成的样例文章
-    tmp/ # 临时文件
-index.html # 首页
-
-etc/  # 用户配置文件, 可以覆盖 pigger 系统配置 sys/etc/
-    css/
-    themes/
-home/ # 写作平台
-    assets/
-        images/
-        videos/
-    md-demo.md # markdown 文件
-    text-demo.txt # 文本文件
-    draft/ # 草稿文件, 生成 html 时将会跳过
-        drft-demo.md
+        tmp/ # 临时文件
+        index.html # 首页
+    home/ # 写作平台
+        usr/  # 用户配置文件, 可以覆盖或扩展 pigger 系统配置
+            css/
+            themes/
+        assets/
+            images/
+            videos/
+        md-demo.md # markdown 文件
+        text-demo.txt # 文本文件
+        draft/ # 草稿文件, 生成 html 时将会跳过
+            drft-demo.md
 ```
 
 用户只需要保留 `usr/` 和 `home/` 目录即可, 可以方便的实现迁移.
+
+# 效果预览
+
+    !(./images/effect-01.png)
+
+    !(./images/effect-02.png)
