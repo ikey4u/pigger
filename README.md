@@ -108,6 +108,6 @@ SITE/
 
 # 效果预览
 
-    !(images/effect-01.png)
+    ![](images/effect-01.png)
 
-    !(images/effect-02.png)
+    ![](images/effect-02.png)
