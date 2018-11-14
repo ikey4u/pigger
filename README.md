@@ -108,5 +108,6 @@ SITE/
 
 # 效果预览
 
-    ![](https://gitlab.com/bugnofree/pigger/raw/master/images/effect-01.png)
-    ![](https://gitlab.com/bugnofree/pigger/raw/master/images/effect-02.png)
+![](images/effect-01.png)
+
+![](images/effect-02.png)
