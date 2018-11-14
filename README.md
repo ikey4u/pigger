@@ -108,6 +108,5 @@ SITE/
 
 # 效果预览
 
-    ![](images/effect-01.png)
-
-    ![](images/effect-02.png)
+    <img src="./images/effect-01.png" alt="">
+    <img src="./images/effect-02.png" alt="">
