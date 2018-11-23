@@ -110,7 +110,7 @@ func renderList(btlines [][]byte) (string) {
                 html += stack.Pop()
                 html += stack.Pop()
             }
-            html += "</li>"
+            html += stack.Pop()
             html += "<li>"
             html += line[idx + 2:]
             stack.Push("</li>")
