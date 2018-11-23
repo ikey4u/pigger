@@ -1,279 +1,150 @@
 package main
 
 import (
-    "flag"
     "fmt"
-    "os"
     "io/ioutil"
-    "path/filepath"
+    "os"
     "log"
+    "bytes"
     "strings"
-    "bufio"
-    "github.com/gobuffalo/packr"
 )
 
-var (
-    newsite = flag.String("n", "", "Create a new site")
-	help       = flag.Bool("h", false, "show this help")
-    build = flag.Bool("b", false, "build all notes")
-)
-
-func usage() {
-    fmt.Println("Usage: pigger [flags]", "")
-    fmt.Println("Flags: ", "")
-	flag.PrintDefaults()
+func sentry(err error, msg string) {
+    if err != nil {
+        log.Fatal(msg)
+    }
 }
 
-func analyzeLine(line string) (string){
-    richline := ""
-    runeline := []rune(line)
-    for i := 0; i < len(runeline); i++ {
-        switch runeline[i] {
-            case ' ' :
-                if i + 1 < len(runeline) && runeline[i + 1] == ' ' {
-                    remain := string(runeline[i + 2:])
-                    idx := strings.Index(remain, "  ")
-                    if idx != -1 {
-                        blk := string(remain[0: idx])
-                        richline += `&nbsp;<code class="language-clike">` + blk + "</code>&nbsp;"
-                        i += len("  ") * 2 + len(blk) - 1
-                    } else {
-                        richline += string(runeline[i])
-                    }
-                } else {
-                    richline += string(runeline[i])
-                }
-            default:
-                richline += string(runeline[i])
-        }
+func getHeadline(block []byte) (map[string]string) {
+    headline := make(map[string]string)
+    lines := bytes.Split(block, []byte{0xa})
+    if string(lines[0]) != "---" || string(lines[len(lines) - 1]) != "---" {
+        log.Fatal("Wrong meta format!\n")
     }
-    return richline
+    // Remove the first and last "---" from headline,
+    // you know that the slice in go is really silly, it should not support negative index!
+    lines = lines[1:len(lines) - 1]
+    for _, line := range lines {
+        s := string(line)
+        info := strings.Split(s, ":")
+        if len(info) < 2 {
+            log.Fatal("The format of <", s , "> is not correct!\n")
+        }
+        key := strings.ToLower(strings.TrimSpace(info[0]))
+        val := strings.TrimSpace(info[1])
+        headline[key] = val
+    }
+    return headline
 }
 
-func buildNotes() {
-    curdir, err := os.Getwd()
-    if err != nil {
-        log.Fatal("Cannot get current directory!")
+func renderPara(block []byte) (string) {
+    para := ""
+    return para
+}
+
+type Stack struct {
+    data []string;
+    l int;
+}
+
+func NewStack() *Stack {
+    stack := new(Stack)
+    stack.data = make([]string, 0)
+    stack.l = 0
+    return stack
+}
+
+func (s *Stack) Push(item string) {
+    s.data = append(s.data, item)
+    s.l += 1
+}
+
+func (s *Stack) Pop() (string) {
+    if s.l > 0 {
+        item := s.data[s.l - 1]
+        s.data = s.data[0:s.l - 1]
+        s.l -= 1
+        return item
+    } else {
+        return ""
     }
-    docdir := filepath.Join(curdir, "home")
-    files, err := ioutil.ReadDir(docdir)
-    if err != nil {
-        log.Fatal("Cannot read dir ")
+}
+
+func (s *Stack) Size() (int) {
+    return s.l;
+}
+
+func (s *Stack) Print() {
+    for idx, item := range s.data {
+        fmt.Printf("[%d] = %s\n", idx, item)
     }
-    for _, f := range files {
-        ext := filepath.Ext(f.Name())
-        if ext == ".md" || ext == ".txt" {
-            doc, _ := os.Open(filepath.Join(docdir, f.Name()))
-            defer doc.Close()
-            scanner := bufio.NewScanner(doc)
+}
 
-            /*
-             * Set article headline
-             */
-            for scanner.Scan() {
-                bareline := strings.TrimSpace(scanner.Text())
-                if bareline != "---" {
-                    continue
-                } else {
-                    break
-                }
+func renderList(btlines [][]byte) (string) {
+    stack := NewStack()
+    html := "<ul>"
+    stack.Push("</ul>")
+    html += "<li>" + string(btlines[0])[2:]
+    stack.Push("</li>")
+    indent := 0
+    for i := 1; i < len(btlines); i++ {
+        line := string(btlines[i])
+        // TODO:"- "  may be not the first one
+        idx := strings.Index(line, "- ")
+        if idx == -1 {
+            html += line
+        } else if idx / 4 == indent {
+            html += stack.Pop()
+            html += "<li>"
+            html += line[idx + 2:]
+            stack.Push("</li>")
+        } else if idx / 4 > indent {
+            html += "<ul>"
+            stack.Push("</ul>")
+            html += "<li>"
+            html += line[idx + 2:]
+            stack.Push("</li>")
+            indent = idx / 4
+        } else {
+            for j := idx / 4; j < indent; j++ {
+                html += stack.Pop()
+                html += stack.Pop()
             }
-            head := make(map[string]string)
-            for scanner.Scan() {
-                bareline := strings.TrimSpace(scanner.Text())
-
-                if bareline == "" {
-                    continue
-                }
-
-                if bareline == "---" {
-                    // Read the fucking carriage line feed
-                    scanner.Scan()
-                    break
-                }
-
-                info := strings.Split(bareline, ":")
-                if len(info) < 2 {
-                    log.Fatal("The format of <", bareline , "> is not correct!\n")
-                }
-                head[strings.ToLower(strings.TrimSpace(info[0]))] = strings.TrimSpace(info[1])
-            }
-
-            htmlname := strings.TrimSuffix(f.Name(), ext) + ".html"
-            out, _ := os.Create(filepath.Join(curdir, "3w", htmlname))
-            defer out.Close()
-            out.WriteString(`<!DOCTYPE html>` + "\n")
-            out.WriteString(`<html width="97%" lang="en">` + "\n")
-            out.WriteString(`<head>` + "\n")
-            out.WriteString(`<meta charset="UTF-8">` + "\n")
-            out.WriteString("<title>" + head["title"] + "</title>" + "\n")
-            out.WriteString(`<link href="css/prism.css" rel="stylesheet" />` + "\n")
-            out.WriteString(`<link href="css/normalize.css" rel="stylesheet" />` + "\n")
-            out.WriteString("</head>" + "\n")
-
-            out.WriteString(`<body style="margin: 1% 5% 1% 5%;">` + "\n")
-            out.WriteString(`<section style="padding-top: 20px; padding-bottom: 5px; color: #fff; text-align: center; background-image: linear-gradient(120deg, #224a73, #0d4027);">` + "\n")
-            out.WriteString(`<h1 style="font-size: 2.25rem;">` + "\n")
-            out.WriteString(head["title"])
-            out.WriteString(`</h1>` + "\n")
-            out.WriteString(`<h3 style="font-weight: normal; opacity: 0.7; font-size: 1.15rem;">` + "\n")
-            out.WriteString(head["date"])
-            out.WriteString(` by ` + head["author"] + "\n")
-            out.WriteString(`</h3>` + "\n")
-            out.WriteString(`</section>` + "\n")
-            out.WriteString("\n")
-
-            /*
-             * Render body
-             */
-            hungry := true
-            food := ""
-            preline := ""
-            blkend := false
-            gap := false
-            endmark := ""
-            pretext := false
-
-            for scanner.Scan() {
-                line := scanner.Text()
-                bareline := strings.TrimSpace(line)
-
-                if len(bareline) == 0 {
-                    gap = true
-                }
-
-                if gap {
-                    if preline != "" {
-                        blkend = true
-                    }
-                }
-
-                if blkend {
-                    gtmark := strings.Index(food, ">")
-                    if gtmark != -1 {
-                        out.WriteString(food + endmark + "\n")
-                    }
-
-                    hungry = true
-                    food = ""
-                    blkend = false
-                    gap = false
-                    endmark = ""
-                    if pretext {
-                        pretext = false
-                    }
-                }
-
-                if hungry {
-                    // <pre></pre>
-                    if strings.HasPrefix(line, "    ") {
-                        idx := strings.Index(line, "//:")
-                        highlights := "language-clike"
-                        if idx != -1 {
-                            highlights = "language-" + strings.TrimSpace(line[idx + 3:])
-                        }
-                        food = `<pre><code class="` + highlights + `">`
-                        endmark = "</code></pre>"
-                        if idx == -1 {
-                            food += bareline + "\n"
-                        }
-                        hungry = false
-                        pretext = true
-                    // h4
-                    } else if strings.HasPrefix(bareline, "####") {
-                        h4 := strings.TrimLeft(bareline, "####")
-                        food = "<h4>" + analyzeLine(h4)
-                        endmark = "</h4>"
-                        blkend = true
-                    // h3
-                    } else if strings.HasPrefix(bareline, "###") {
-                        h3 := strings.TrimLeft(bareline, "###")
-                        food = "<h3>" + analyzeLine(h3)
-                        endmark = "</h3>"
-                        blkend = true
-                    // h2
-                    } else if strings.HasPrefix(bareline, "##") {
-                        h2 := strings.TrimLeft(bareline, "##")
-                        food = "<h2>" + analyzeLine(h2)
-                        endmark = "</h2>"
-                        blkend = true
-                    // h1
-                    } else if strings.HasPrefix(bareline, "#") {
-                        h1 := strings.TrimLeft(bareline, "#")
-                        food = "<h1>" + analyzeLine(h1)
-                        endmark = "</h1>"
-                        blkend = true
-                    // <p></p>
-                    } else if preline == "" {
-                        food = "<p>" + analyzeLine(line) + "\n"
-                        endmark = "</p>"
-                        hungry = false
-                    }
-                } else {
-                    if pretext {
-                        food += line[4:] + "\n"
-                    } else {
-                        food += analyzeLine(line) + "\n"
-                    }
-                }
-                preline = bareline
-            }
-
-            /*
-             * Render the footer
-             */
-            out.WriteString(`<script src="css/prism.js"></script>` + "\n")
-            out.WriteString("</body>" + "\n")
-            out.WriteString("</html>" + "\n")
-            out.Sync()
+            html += "</li>"
+            html += "<li>"
+            html += line[idx + 2:]
+            stack.Push("</li>")
+            indent = idx / 4
         }
+    }
+    for stack.Size() > 0 {
+        html += stack.Pop()
+    }
+    return html
+}
+
+func renderBlock(block []byte) {
+    lines := bytes.Split(block, []byte{0xa})
+    flag := string(lines[0])
+
+    if len(flag) >= 3 && flag == "---" {
+        headline := getHeadline(block)
+        fmt.Println(headline)
+        return
+    }
+
+    if len(flag) >= 2 && flag[0:2] == "- " {
+        items := renderList(bytes.Split(block, []byte{0xa}))
+        fmt.Println(items)
     }
 }
 
 func main() {
-    flag.Usage = usage
-    flag.Parse()
+    input, err := ioutil.ReadFile(os.Args[1])
+    sentry(err, "Cannot read file!")
+    blocks := bytes.Split(input[0:], []byte{0xa, 0xa})
 
-    box := packr.NewBox("./etc")
-
-
-    if *help {
-        usage()
-        os.Exit(2)
-    }
-
-    if *newsite != "" {
-        root, err := filepath.Abs(*newsite)
-        if err != nil {
-            log.Fatal("Cannot resovle " + *newsite)
-        }
-
-        /*
-         * Well, a not so elegant way to create structure
-         */
-        os.MkdirAll(filepath.Join(root, "3w"), os.ModePerm)
-        os.Mkdir(filepath.Join(root, "3w", "images"), os.ModePerm)
-        os.Mkdir(filepath.Join(root, "3w", "videos"), os.ModePerm)
-        os.Mkdir(filepath.Join(root, "3w", "tmp"), os.ModePerm)
-        os.Mkdir(filepath.Join(root, "3w", "css"), os.ModePerm)
-
-        cssfiles := [...]string{"normalize.css", "pigger.css", "prism.css", "prism.js"}
-        for _, f := range cssfiles {
-            out, _ := os.Create(filepath.Join(root, "3w", "css", f))
-            txt, _ := box.FindString("css/" + f)
-            out.WriteString(txt)
-        }
-
-        os.MkdirAll(filepath.Join(root, "home", "usr", "css"), os.ModePerm)
-        os.MkdirAll(filepath.Join(root, "home", "usr", "themes"), os.ModePerm)
-        os.MkdirAll(filepath.Join(root, "home", "assets", "images"), os.ModePerm)
-        os.MkdirAll(filepath.Join(root, "home", "assets", "videos"), os.ModePerm)
-        os.MkdirAll(filepath.Join(root, "home", "draft"), os.ModePerm)
-
-        fmt.Println("The new site is located in " + root)
-    }
-
-    if *build {
-        buildNotes()
+    for _, block := range blocks {
+        renderBlock(block)
     }
 }

@@ -21,6 +21,10 @@
 # TODO
 
 - 实现文本到简单 html 的渲染 (✓)
+- 解析文章头(标题, 作者, 时间) (✓)
+- 实现列表的渲染
+- 修复代码块中不能有空行的问题
+- 捆绑静态资源(css, js 等) (✓)
 
 # 格式
 
@@ -105,6 +109,35 @@ SITE/
 ```
 
 用户只需要保留 `usr/` 和 `home/` 目录即可, 可以方便的实现迁移.
+
+# 样例文章
+
+```
+---
+title: link and loader - an introduction for human
+date: 2018-11-02
+author: bugnofree
+type: md, txt
+---
+
+ELF 将 GOT 拆封为两个表:
+
+- .got: 该数组依次存放全局变量的引用地址
+- .got.plt: 该数组依次存放函数的引用地址, 该数组的前三个元素如下
+    - .got.plt[0]: 保存 .dynamic 地址
+        - hello world
+            - hello world
+    - .got.plt[1]: 保存 link_map 指针
+    - .got.plt[2]: 保存 _dl_runtime_resolve 函数地址
+
+其余的每一项均保存外部函数的引用.
+
+插入图片: @sample.png
+
+插入连接: @https://www.google.com
+
+插入公式: $a^2+b^2=c^2
+```
 
 # 效果预览
 
