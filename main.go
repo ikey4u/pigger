@@ -7,6 +7,7 @@ import (
     "log"
     "bytes"
     "strings"
+    "html"
 )
 
 func sentry(err error, msg string) {
@@ -79,10 +80,10 @@ func renderLine(block []byte) (string){
                     i += 1 + len([]rune(blk))
                     // fmt.Printf("i = %d\n", i)
                 } else {
-                    htmlline += string(line[i])
+                    htmlline += html.EscapeString(string(line[i]))
                 }
             default:
-                htmlline += string(line[i])
+                htmlline += html.EscapeString(string(line[i]))
         }
     }
     return htmlline
@@ -147,17 +148,17 @@ func renderList(btlines [][]byte) (string) {
         // TODO:"- "  may be not the first one
         idx := strings.Index(line, "- ")
         if idx == -1 {
-            html += line
+            html += renderLine(([]byte(line)))
         } else if idx / 4 == indent {
             html += stack.Pop()
             html += "<li>"
-            html += line[idx + 2:]
+            html += renderLine([]byte(line[idx + 2:]))
             stack.Push("</li>")
         } else if idx / 4 > indent {
             html += "<ul>"
             stack.Push("</ul>")
             html += "<li>"
-            html += line[idx + 2:]
+            html += renderLine([]byte(line[idx + 2:]))
             stack.Push("</li>")
             indent = idx / 4
         } else {
@@ -167,7 +168,7 @@ func renderList(btlines [][]byte) (string) {
             }
             html += stack.Pop()
             html += "<li>"
-            html += line[idx + 2:]
+            html += renderLine([]byte(line[idx + 2:]))
             stack.Push("</li>")
             indent = idx / 4
         }
@@ -202,12 +203,17 @@ func renderCode(block []byte) string {
         if idx != -1 && no == 0 {
             continue
         }
-        line := string(btline)[4:]
-        code += line + "\n"
+        if len(btline) >= 4 {
+            line := html.EscapeString(string(btline[4:]))
+            code += line + "\n"
+        } else if len(btline) != 0 {
+            log.Fatal("Bug find! Please send this file to maintainer through <pwnkeeper@gmail.com>, thanks!\n");
+        }
     }
     code += "</code></pre>"
     return code
 }
+
 
 func renderBlock(block []byte) string {
     block = bytes.TrimPrefix(block, []byte{0xa})
@@ -248,7 +254,8 @@ func main() {
     html += "</body>" + "\n"
     html += "</html>" + "\n"
 
-    out, _ := os.Create("tmp.html")
+    out, _ := os.Create("test.html")
     defer out.Close()
     out.WriteString(html)
+    fmt.Printf("Save file into %s!\n", "test.html")
 }

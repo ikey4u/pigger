@@ -11,3 +11,5 @@
 *.pyc
 build
 main
+test/test.html
+demo/
