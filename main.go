@@ -75,7 +75,7 @@ func renderLine(block []byte) (string){
                 // fmt.Printf("idx = %d\n", idx)
                 if idx != -1 {
                     blk := string(remain[0: idx])
-                    htmlline += `&nbsp;<code class="language-clike">` + blk + "</code>&nbsp;"
+                    htmlline += `&nbsp;<code class="language-clike">` + html.EscapeString(blk) + "</code>&nbsp;"
                     // notice that we should calculate the number of unicode and accumulate
                     i += 1 + len([]rune(blk))
                     // fmt.Printf("i = %d\n", i)
@@ -138,45 +138,78 @@ func (s *Stack) Print() {
 
 func renderList(btlines [][]byte) (string) {
     stack := NewStack()
-    html := "<ul>"
+    listhtml := "<ul>"
     stack.Push("</ul>")
-    html += "<li>" + string(btlines[0])[2:]
-    stack.Push("</li>")
     indent := 0
-    for i := 1; i < len(btlines); i++ {
-        line := string(btlines[i])
-        // TODO:"- "  may be not the first one
+    firstitem := true
+    for i := 0; i < len(btlines); i++ {
+        line := strings.TrimRight(string(btlines[i]), " ")
+        // If there should a item, then it must be the first
+        wantidx := len(line) - len(strings.TrimLeft(line, " "))
         idx := strings.Index(line, "- ")
-        if idx == -1 {
-            html += renderLine(([]byte(line)))
-        } else if idx / 4 == indent {
-            html += stack.Pop()
-            html += "<li>"
-            html += renderLine([]byte(line[idx + 2:]))
-            stack.Push("</li>")
-        } else if idx / 4 > indent {
-            html += "<ul>"
-            stack.Push("</ul>")
-            html += "<li>"
-            html += renderLine([]byte(line[idx + 2:]))
-            stack.Push("</li>")
-            indent = idx / 4
-        } else {
-            for j := idx / 4; j < indent; j++ {
-                html += stack.Pop()
-                html += stack.Pop()
+        // if the idx is not found or the item indicator is not the first
+        if idx == -1 || line[wantidx:wantidx + 2] != "- " {
+            space := len(line) - len(strings.TrimLeft(line, " "))
+            if space >= 8 {
+                codeblk := make([]byte, 0, 64)
+                for j := i; j < len(btlines); j++ {
+                    space = len(btlines[j]) - len(bytes.TrimLeft(btlines[j], " "))
+                    if space >= 8 {
+                        codeblk = append(codeblk, btlines[j]...)
+                        codeblk = append(codeblk, 0xa)
+                    }
+                    if space < 8 || j == len(btlines) - 1 {
+                        tmp := renderCode(codeblk, 8)
+                        listhtml += tmp
+                        if j == len(btlines) - 1 {
+                            i = j
+                        } else {
+                            i = j - 1
+                        }
+                        break
+                    }
+                }
+            } else {
+                listhtml += renderLine(([]byte(line)))
             }
-            html += stack.Pop()
-            html += "<li>"
-            html += renderLine([]byte(line[idx + 2:]))
-            stack.Push("</li>")
-            indent = idx / 4
+        } else {
+            brk := ""
+            if line[len(line) - 1] == ':' {
+                line = line[0:len(line) - 1]
+                brk = "<br/>"
+            }
+            if idx / 4 == indent {
+                if !firstitem {
+                    listhtml += stack.Pop()
+                    firstitem = false
+                }
+                listhtml += "<li>"
+                listhtml += renderLine([]byte(line[idx + 2:])) + brk
+                stack.Push("</li>")
+            } else if idx / 4 > indent {
+                listhtml += "<ul>"
+                stack.Push("</ul>")
+                listhtml += "<li>"
+                listhtml += renderLine([]byte(line[idx + 2:])) + brk
+                stack.Push("</li>")
+                indent = idx / 4
+            } else {
+                for j := idx / 4; j < indent; j++ {
+                    listhtml += stack.Pop()
+                    listhtml += stack.Pop()
+                }
+                listhtml += stack.Pop()
+                listhtml += "<li>"
+                listhtml += renderLine([]byte(line[idx + 2:])) + brk
+                stack.Push("</li>")
+                indent = idx / 4
+            }
         }
     }
     for stack.Size() > 0 {
-        html += stack.Pop()
+        listhtml += stack.Pop()
     }
-    return html
+    return listhtml
 }
 
 func renderTitle(block []byte) string {
@@ -191,7 +224,7 @@ func renderTitle(block []byte) string {
     return fmt.Sprintf("<h%d>%s</h%d>", level, line[level:], level)
 }
 
-func renderCode(block []byte) string {
+func renderCode(block []byte, outindent int) string {
     btlines := bytes.Split(block, []byte{0xa})
     idx := strings.Index(string(btlines[0]), "//:")
     highlights := "language-clike"
@@ -200,20 +233,23 @@ func renderCode(block []byte) string {
     }
     code := fmt.Sprintf("<pre><code class=\"%s\">", highlights)
     for no, btline := range btlines {
+        // skip highlight line
         if idx != -1 && no == 0 {
             continue
         }
-        if len(btline) >= 4 {
-            line := html.EscapeString(string(btline[4:]))
-            code += line + "\n"
-        } else if len(btline) != 0 {
-            log.Fatal("Bug find! Please send this file to maintainer through <pwnkeeper@gmail.com>, thanks!\n");
+        // if the last line is empty, we skip it
+        if no == len(btlines) - 1 && len(bytes.TrimSpace(btline)) == 0 {
+            continue
         }
+        if outindent > len(btline) {
+            outindent = 0
+        }
+        line := html.EscapeString(string(btline[outindent:]))
+        code += line + "\n"
     }
     code += "</code></pre>"
     return code
 }
-
 
 func renderBlock(block []byte) string {
     block = bytes.TrimPrefix(block, []byte{0xa})
@@ -233,8 +269,13 @@ func renderBlock(block []byte) string {
         return items
     }
 
+    if len(flag) >= 8 && flag[0:8] == "        " {
+        code := renderCode(block, 8)
+        return code
+    }
+
     if len(flag) >= 4 && flag[0:4] == "    " {
-        code := renderCode(block)
+        code := renderCode(block, 4)
         return code
     }
 
@@ -246,16 +287,16 @@ func main() {
     sentry(err, "Cannot read file!")
     blocks := bytes.Split(input[0:], []byte{0xa, 0xa})
 
-    html := ""
+    dochtml := ""
     for _, block := range blocks {
-        html += renderBlock(block) + "\n"
+        dochtml += renderBlock(block) + "\n"
     }
-    html += `<script src="css/prism.js"></script>` + "\n"
-    html += "</body>" + "\n"
-    html += "</html>" + "\n"
+    dochtml += `<script src="css/prism.js"></script>` + "\n"
+    dochtml += "</body>" + "\n"
+    dochtml += "</html>" + "\n"
 
     out, _ := os.Create("test.html")
     defer out.Close()
-    out.WriteString(html)
+    out.WriteString(dochtml)
     fmt.Printf("Save file into %s!\n", "test.html")
 }
