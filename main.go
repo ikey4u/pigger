@@ -22,6 +22,15 @@ type pigconf struct {
 }
 var pc pigconf
 
+type postmeta struct {
+    Title string
+    Date string
+    Author string
+}
+type post struct {
+    postmetas []postmeta
+}
+
 func getHeadline(block []byte) string {
     headline := make(map[string]string)
     lines := bytes.Split(block, []byte{0xa})
@@ -356,6 +365,26 @@ func expandPath(p string) (out string){
     return out
 }
 
+func unpackResource(box packr.Box, unpack2dir string) {
+    if _, err := os.Stat(unpack2dir); os.IsNotExist(err) {
+        os.MkdirAll(unpack2dir, os.ModePerm)
+    }
+    resource := [...]string{"normalize.css", "pigger.css", "prism.css", "prism.js"}
+    cssdir := filepath.Join(unpack2dir, "css"); os.Mkdir(cssdir, os.ModePerm)
+    jsdir := filepath.Join(unpack2dir, "js"); os.Mkdir(jsdir, os.ModePerm)
+    for _, f := range resource {
+        if strings.HasSuffix(f, ".css") {
+            fout, _ := os.Create(filepath.Join(cssdir, f))
+            txt, _ := box.FindString("css/" + f)
+            fout.WriteString(txt)
+        } else if strings.HasSuffix(f, ".js") {
+            fout, _ := os.Create(filepath.Join(jsdir, f))
+            txt, _ := box.FindString("js/" + f)
+            fout.WriteString(txt)
+        }
+    }
+}
+
 func main() {
     // pack static resources
     box := packr.NewBox("./etc")
@@ -368,8 +397,11 @@ func main() {
     flag.StringVar(&style, "style", "", "(optional) Specify a remote style root directory.")
     help := flag.Bool("h", false, "(optional) Show this help.")
     flag.Usage = func() {
-        fmt.Printf("Usage: %s [OPTIONS] infile\nOPTIONS:\n", os.Args[0])
+        fmt.Printf("Usage: %s [[OPTIONS] <infile>]|[ACTIONS PARAMS]\nOPTIONS:\n", os.Args[0])
         flag.PrintDefaults()
+        fmt.Printf("ACTIONS:\n")
+        fmt.Printf("  build: Build all files\n")
+        fmt.Printf("  new <sitename>: Create a new site\n")
     }
     flag.Parse()
     // check cmd args
@@ -377,55 +409,61 @@ func main() {
         flag.Usage()
         os.Exit(0)
     }
-    // prepare input and output
-    infile := expandPath(flag.Arg(0))
-    indir, fname := path.Split(infile); _ = indir
-    barename := strings.TrimRight(fname, path.Ext(fname))
-    if outbase == "" {
-        outbase, _ = filepath.Abs(".")
-    } else {
-        outbase = expandPath(outbase)
-    }
-    if _, err := os.Stat(outbase); os.IsNotExist(err) {
-        os.MkdirAll(outbase, os.ModePerm)
-    }
-    outdir := filepath.Join(outbase, barename);os.Mkdir(outdir, os.ModePerm)
-    outfile := filepath.Join(outdir, "index.html")
-    // determin if we should unpack the resource
-    unpack, unpackdir := false, ""
-    if cutoff {
-        if style == "" {
-            pc.style = "../pigger"
-            unpack, unpackdir = true, expandPath(filepath.Join(outdir, pc.style))
+    switch flag.Arg(0) {
+    case "build":
+        fmt.Printf("Build all files ...\n")
+    case "new":
+        if flag.NArg() != 2 {
+            flag.Usage()
+            log.Fatal("You forget input the name for the site, see the help above.\n")
+        }
+        sitedir := expandPath(flag.Arg(1))
+        fmt.Printf("Create new site %s ...\n", sitedir)
+        // unpackResource will create the dir if it does not exist
+        unpackResource(box, filepath.Join(sitedir, "posts", "pigger"))
+        os.MkdirAll(filepath.Join(sitedir, "images"), os.ModePerm)
+        os.MkdirAll(filepath.Join(sitedir, "home"), os.ModePerm)
+        // create pigger configuration pigger.json
+        piggerconf, err := os.Create(filepath.Join(sitedir, "posts", "pigger.json"))
+        defer piggerconf.Close()
+        if err != nil {
+            log.Fatal("Cannot create pigger config file!\n")
+        }
+        fmt.Printf("Good! The new site is created successfully and could be found at %s!\n", sitedir)
+    default:
+        infile := expandPath(flag.Arg(0))
+        // test if input file is exist
+        if _, err := os.Stat(infile); os.IsNotExist(err) {
+            log.Fatal("Input file is not exist!\n")
+        }
+        // prepare input and output
+        _, fname := path.Split(infile)
+        barename := strings.TrimRight(fname, path.Ext(fname))
+        if outbase == "" {
+            outbase, _ = filepath.Abs(".")
         } else {
-            pc.style = style
+            outbase = expandPath(outbase)
         }
-    } else {
-        unpack, unpackdir = true, outdir
-        pc.style = "."
-    }
-    // unpack static resources
-    if unpack {
-        if _, err := os.Stat(unpackdir); os.IsNotExist(err) {
-            os.MkdirAll(unpackdir, os.ModePerm)
+        if _, err := os.Stat(outbase); os.IsNotExist(err) {
+            os.MkdirAll(outbase, os.ModePerm)
         }
-        resource := [...]string{"normalize.css", "pigger.css", "prism.css", "prism.js"}
-        cssdir := filepath.Join(unpackdir, "css"); os.Mkdir(cssdir, os.ModePerm)
-        jsdir := filepath.Join(unpackdir, "js"); os.Mkdir(jsdir, os.ModePerm)
-        for _, f := range resource {
-            if strings.HasSuffix(f, ".css") {
-                fout, _ := os.Create(filepath.Join(cssdir, f))
-                txt, _ := box.FindString("css/" + f)
-                fout.WriteString(txt)
-            } else if strings.HasSuffix(f, ".js") {
-                fout, _ := os.Create(filepath.Join(jsdir, f))
-                txt, _ := box.FindString("js/" + f)
-                fout.WriteString(txt)
+        outdir := filepath.Join(outbase, barename);os.Mkdir(outdir, os.ModePerm)
+        outfile := filepath.Join(outdir, "index.html")
+        // unpack static resources
+        if cutoff {
+            if style == "" {
+                pc.style = "../pigger"
+                unpackResource(box, expandPath(filepath.Join(outdir, pc.style)))
+            } else {
+                pc.style = style
             }
+        } else {
+            unpackResource(box, outdir)
+            pc.style = "."
         }
+        // render file
+        pc.imgout_ = filepath.Join(outdir, "images"); os.Mkdir(pc.imgout_, os.ModePerm)
+        renderFile(infile, outfile)
+        fmt.Printf("Save file into %s\n", outfile)
     }
-    // render file
-    pc.imgout_ = filepath.Join(outdir, "images"); os.Mkdir(pc.imgout_, os.ModePerm)
-    renderFile(infile, outfile)
-    fmt.Printf("Save file into %s\n", outfile)
 }
