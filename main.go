@@ -17,9 +17,8 @@ import (
 
 type pigconf struct {
     style string
-    img string
-    imgin_ string
-    imgout_ string
+    // private variables
+    imgout_ string // Where images located in when output
 }
 var pc pigconf
 
@@ -106,10 +105,15 @@ func renderLine(block []byte) (string){
                         // image
                         } else {
                             // copy image to destination dir
-                            imgdata, _ := ioutil.ReadFile(blk)
+                            inimg := expandPath(blk)
                             outimg := filepath.Join(pc.imgout_, path.Base(blk))
-                            ioutil.WriteFile(outimg, imgdata, os.ModePerm)
-                            htmlline += fmt.Sprintf("<img src=\"%s\"/>", blk)
+                            // fmt.Printf("inimg: %s outimg: %s\n", inimg, outimg)
+                            // avoid copy same image to itself
+                            if inimg != outimg {
+                                imgdata, _ := ioutil.ReadFile(blk)
+                                ioutil.WriteFile(outimg, imgdata, os.ModePerm)
+                            }
+                            htmlline += fmt.Sprintf("<img src=\"images/%s\"/>", path.Base(blk))
                         }
                         i += 2 + len(blk)
                     } else {
@@ -355,31 +359,28 @@ func expandPath(p string) (out string){
 func main() {
     // pack static resources
     box := packr.NewBox("./etc")
-    _ = box
-
     // set cmd argument options
     var outbase string
     flag.StringVar(&outbase, "o", "", "(optional) The output directory.")
     var cutoff bool
     flag.BoolVar(&cutoff, "x", false, "(optional) Cut off css and js files.")
+    var style string
+    flag.StringVar(&style, "style", "", "(optional) Specify a remote style root directory.")
     help := flag.Bool("h", false, "(optional) Show this help.")
     flag.Usage = func() {
         fmt.Printf("Usage: %s [OPTIONS] infile\nOPTIONS:\n", os.Args[0])
         flag.PrintDefaults()
     }
     flag.Parse()
-
     // check cmd args
     if *help || flag.NArg() == 0 {
         flag.Usage()
         os.Exit(0)
     }
-
     // prepare input and output
     infile := expandPath(flag.Arg(0))
     indir, fname := path.Split(infile); _ = indir
     barename := strings.TrimRight(fname, path.Ext(fname))
-    // fmt.Printf("infile: %s indir: %s fname: %s barename: %s\n", infile, indir, fname, barename)
     if outbase == "" {
         outbase, _ = filepath.Abs(".")
     } else {
@@ -390,14 +391,27 @@ func main() {
     }
     outdir := filepath.Join(outbase, barename);os.Mkdir(outdir, os.ModePerm)
     outfile := filepath.Join(outdir, "index.html")
-
-    // release static resources into the outdir
+    // determin if we should unpack the resource
+    unpack, unpackdir := false, ""
     if cutoff {
-        pc.style = filepath.Join(outbase, "pigger")
+        if style == "" {
+            pc.style = "../pigger"
+            unpack, unpackdir = true, expandPath(filepath.Join(outdir, pc.style))
+        } else {
+            pc.style = style
+        }
     } else {
+        unpack, unpackdir = true, outdir
+        pc.style = "."
+    }
+    // unpack static resources
+    if unpack {
+        if _, err := os.Stat(unpackdir); os.IsNotExist(err) {
+            os.MkdirAll(unpackdir, os.ModePerm)
+        }
         resource := [...]string{"normalize.css", "pigger.css", "prism.css", "prism.js"}
-        cssdir := filepath.Join(outdir, "css"); os.Mkdir(cssdir, os.ModePerm)
-        jsdir := filepath.Join(outdir, "js"); os.Mkdir(jsdir, os.ModePerm)
+        cssdir := filepath.Join(unpackdir, "css"); os.Mkdir(cssdir, os.ModePerm)
+        jsdir := filepath.Join(unpackdir, "js"); os.Mkdir(jsdir, os.ModePerm)
         for _, f := range resource {
             if strings.HasSuffix(f, ".css") {
                 fout, _ := os.Create(filepath.Join(cssdir, f))
@@ -409,8 +423,8 @@ func main() {
                 fout.WriteString(txt)
             }
         }
-        pc.style = outdir
     }
+    // render file
     pc.imgout_ = filepath.Join(outdir, "images"); os.Mkdir(pc.imgout_, os.ModePerm)
     renderFile(infile, outfile)
     fmt.Printf("Save file into %s\n", outfile)
