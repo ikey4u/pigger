@@ -8,13 +8,20 @@ import (
     "bytes"
     "strings"
     "html"
+    "github.com/gobuffalo/packr"
+    "flag"
+    "os/user"
+    "path"
+    "path/filepath"
 )
 
-func sentry(err error, msg string) {
-    if err != nil {
-        log.Fatal(msg)
-    }
+type pigconf struct {
+    style string
+    img string
+    imgin_ string
+    imgout_ string
 }
+var pc pigconf
 
 func getHeadline(block []byte) string {
     headline := make(map[string]string)
@@ -43,9 +50,9 @@ func getHeadline(block []byte) string {
     headhtml += `<head>` + "\n"
     headhtml += `<meta charset="UTF-8">` + "\n"
     headhtml += "<title>" + headline["title"] + "</title>" + "\n"
-    headhtml += `<link href="css/prism.css" rel="stylesheet" />` + "\n"
-    headhtml += `<link href="css/normalize.css" rel="stylesheet" />` + "\n"
-    headhtml += `<link href="css/pigger.css" rel="stylesheet" />` + "\n"
+    headhtml += `<link href="` + pc.style + `/css/prism.css" rel="stylesheet" />` + "\n"
+    headhtml += `<link href="` + pc.style + `/css/normalize.css" rel="stylesheet" />` + "\n"
+    headhtml += `<link href="` + pc.style + `/css/pigger.css" rel="stylesheet" />` + "\n"
     headhtml += "</head>" + "\n"
     headhtml += `<body style="margin: 1% 5% 1% 5%;">` + "\n"
     headhtml += `<section style="padding-top: 20px; padding-bottom: 5px; color: #fff; text-align: center; background-image: linear-gradient(120deg, #224a73, #0d4027);">` + "\n"
@@ -89,13 +96,19 @@ func renderLine(block []byte) (string){
                     // find ']' and there is at least one character in '[]'
                     if idx != -1 && idx > 1{
                         blk := string(remain[1:idx])
+                        // link
                         if strings.HasPrefix(blk, "http") || strings.HasPrefix(blk, "ftp") {
                             link := blk
                             if len(blk) > 32 {
                                 link = blk[0:32] + "..."
                             }
                             htmlline += fmt.Sprintf("<a href=\"%s\">%s</a>", blk, link)
+                        // image
                         } else {
+                            // copy image to destination dir
+                            imgdata, _ := ioutil.ReadFile(blk)
+                            outimg := filepath.Join(pc.imgout_, path.Base(blk))
+                            ioutil.WriteFile(outimg, imgdata, os.ModePerm)
                             htmlline += fmt.Sprintf("<img src=\"%s\"/>", blk)
                         }
                         i += 2 + len(blk)
@@ -305,21 +318,100 @@ func renderBlock(block []byte) string {
     return renderPara(block)
 }
 
-func main() {
-    input, err := ioutil.ReadFile(os.Args[1])
-    sentry(err, "Cannot read file!")
+func renderFile(infile string, outfile string) {
+    input, err := ioutil.ReadFile(infile)
+    if err != nil {
+        log.Fatal("Cannot read file!")
+    }
     blocks := bytes.Split(input[0:], []byte{0xa, 0xa})
 
     dochtml := ""
     for _, block := range blocks {
         dochtml += renderBlock(block) + "\n"
     }
-    dochtml += `<script src="css/prism.js"></script>` + "\n"
+    dochtml += `<script src="` + pc.style + `/js/prism.js"></script>` + "\n"
     dochtml += "</body>" + "\n"
     dochtml += "</html>" + "\n"
 
-    out, _ := os.Create("test.html")
+    out, _ := os.Create(outfile)
     defer out.Close()
     out.WriteString(dochtml)
-    fmt.Printf("Save file into %s!\n", "test.html")
+}
+
+func expandPath(p string) (out string){
+    if strings.HasPrefix(p, "~") {
+        usr, _ := user.Current()
+        if len(p) > 1 {
+            out = filepath.Join(usr.HomeDir, p[1:])
+        } else {
+            out = usr.HomeDir
+        }
+    } else {
+        out, _ = filepath.Abs(p)
+    }
+    return out
+}
+
+func main() {
+    // pack static resources
+    box := packr.NewBox("./etc")
+    _ = box
+
+    // set cmd argument options
+    var outbase string
+    flag.StringVar(&outbase, "o", "", "(optional) The output directory.")
+    var cutoff bool
+    flag.BoolVar(&cutoff, "x", false, "(optional) Cut off css and js files.")
+    help := flag.Bool("h", false, "(optional) Show this help.")
+    flag.Usage = func() {
+        fmt.Printf("Usage: %s [OPTIONS] infile\nOPTIONS:\n", os.Args[0])
+        flag.PrintDefaults()
+    }
+    flag.Parse()
+
+    // check cmd args
+    if *help || flag.NArg() == 0 {
+        flag.Usage()
+        os.Exit(0)
+    }
+
+    // prepare input and output
+    infile := expandPath(flag.Arg(0))
+    indir, fname := path.Split(infile); _ = indir
+    barename := strings.TrimRight(fname, path.Ext(fname))
+    // fmt.Printf("infile: %s indir: %s fname: %s barename: %s\n", infile, indir, fname, barename)
+    if outbase == "" {
+        outbase, _ = filepath.Abs(".")
+    } else {
+        outbase = expandPath(outbase)
+    }
+    if _, err := os.Stat(outbase); os.IsNotExist(err) {
+        os.MkdirAll(outbase, os.ModePerm)
+    }
+    outdir := filepath.Join(outbase, barename);os.Mkdir(outdir, os.ModePerm)
+    outfile := filepath.Join(outdir, "index.html")
+
+    // release static resources into the outdir
+    if cutoff {
+        pc.style = filepath.Join(outbase, "pigger")
+    } else {
+        resource := [...]string{"normalize.css", "pigger.css", "prism.css", "prism.js"}
+        cssdir := filepath.Join(outdir, "css"); os.Mkdir(cssdir, os.ModePerm)
+        jsdir := filepath.Join(outdir, "js"); os.Mkdir(jsdir, os.ModePerm)
+        for _, f := range resource {
+            if strings.HasSuffix(f, ".css") {
+                fout, _ := os.Create(filepath.Join(cssdir, f))
+                txt, _ := box.FindString("css/" + f)
+                fout.WriteString(txt)
+            } else if strings.HasSuffix(f, ".js") {
+                fout, _ := os.Create(filepath.Join(jsdir, f))
+                txt, _ := box.FindString("js/" + f)
+                fout.WriteString(txt)
+            }
+        }
+        pc.style = outdir
+    }
+    pc.imgout_ = filepath.Join(outdir, "images"); os.Mkdir(pc.imgout_, os.ModePerm)
+    renderFile(infile, outfile)
+    fmt.Printf("Save file into %s\n", outfile)
 }
