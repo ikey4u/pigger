@@ -106,16 +106,21 @@ img{
     margin-right: auto;
     margin-top:8px;
     margin-bottom:15px;
+    max-width: 100%;
+    height: auto;
 }
 /** 背景色渐变,兼容Chrome,IE,Firefox,Opera,Safari **/
-html{
-background: -webkit-gradient(linear,0 0, 0 100%, from(rgba(250,250,250,1)), to(rgba(210,210,210,1))); /** Chrome Safari **/
-background: -moz-linear-gradient(top, rgba(250,250,250,1), rgba(210,210,210,1)); /** FireFox **/
-background: -o-linear-gradient(top, rgba(250,250,250,1), rgba(210,210,210,1));  /** Opera **/
-background: -ms-linear-gradient(rgba(250,250,250,1) 0%,rgba(210,210,210,1) 100%);  /** IE9 IE10 **/
--ms-filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='rgba(250,250,250,1)',endColorstr='rgba(210,210,210,1)',grandientType=1); /** IE8 **/
-filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='rgba(250,250,250,1)',endColorstr='rgba(210,210,210,1)',grandientType=1); /** IE7 **/
-}
+/*
+ * html{
+ * background: -webkit-gradient(linear,0 0, 0 100%, from(rgba(250,250,250,1)), to(rgba(210,210,210,1))); [>* Chrome Safari *<]
+ * background: -moz-linear-gradient(top, rgba(250,250,250,1), rgba(210,210,210,1)); [>* FireFox *<]
+ * background: -o-linear-gradient(top, rgba(250,250,250,1), rgba(210,210,210,1));  [>* Opera *<]
+ * background: -ms-linear-gradient(rgba(250,250,250,1) 0%,rgba(210,210,210,1) 100%);  [>* IE9 IE10 *<]
+ * -ms-filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='rgba(250,250,250,1)',endColorstr='rgba(210,210,210,1)',grandientType=1); [>* IE8 *<]
+ * filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='rgba(250,250,250,1)',endColorstr='rgba(210,210,210,1)',grandientType=1); [>* IE7 *<]
+ * }
+ */
+
 /*去掉超链接的下标*/
 a{
     text-decoration:none;
