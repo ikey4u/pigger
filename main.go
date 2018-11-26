@@ -45,6 +45,7 @@ func getHeadline(block []byte) string {
     headhtml += "<title>" + headline["title"] + "</title>" + "\n"
     headhtml += `<link href="css/prism.css" rel="stylesheet" />` + "\n"
     headhtml += `<link href="css/normalize.css" rel="stylesheet" />` + "\n"
+    headhtml += `<link href="css/pigger.css" rel="stylesheet" />` + "\n"
     headhtml += "</head>" + "\n"
     headhtml += `<body style="margin: 1% 5% 1% 5%;">` + "\n"
     headhtml += `<section style="padding-top: 20px; padding-bottom: 5px; color: #fff; text-align: center; background-image: linear-gradient(120deg, #224a73, #0d4027);">` + "\n"
@@ -64,7 +65,6 @@ func renderLine(block []byte) (string){
     htmlline := ""
     line := []rune(string(block))
     // for rune, len returns the number of character
-    // fmt.Printf("len(line) = %d\n", len(line))
     // i is the index of unicode character
     for i := 0; i < len(line); i++ {
         switch line[i] {
@@ -79,6 +79,29 @@ func renderLine(block []byte) (string){
                     // notice that we should calculate the number of unicode and accumulate
                     i += 1 + len([]rune(blk))
                     // fmt.Printf("i = %d\n", i)
+                } else {
+                    htmlline += html.EscapeString(string(line[i]))
+                }
+            case '@':
+                if i + 1 < len(line) && line[i + 1] == '[' {
+                    remain := string(line[i+1:])
+                    idx := strings.IndexRune(remain, ']')
+                    // find ']' and there is at least one character in '[]'
+                    if idx != -1 && idx > 1{
+                        blk := string(remain[1:idx])
+                        if strings.HasPrefix(blk, "http") || strings.HasPrefix(blk, "ftp") {
+                            link := blk
+                            if len(blk) > 32 {
+                                link = blk[0:32] + "..."
+                            }
+                            htmlline += fmt.Sprintf("<a href=\"%s\">%s</a>", blk, link)
+                        } else {
+                            htmlline += fmt.Sprintf("<img src=\"%s\"/>", blk)
+                        }
+                        i += 2 + len(blk)
+                    } else {
+                        htmlline += html.EscapeString(string(line[i]))
+                    }
                 } else {
                     htmlline += html.EscapeString(string(line[i]))
                 }
