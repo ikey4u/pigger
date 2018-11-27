@@ -94,3 +94,26 @@
 
     使用 `@<somthing>` 表示一个链接, 如图是网址, 则渲染成一个 a 标签,
     如果是图片, 则渲染成 img 标签并拷贝图片.
+
+# 编译
+
+## 静态资源打包
+
+    // 安装工具
+    go get -u github.com/gobuffalo/packr/packr
+    // 安装包
+    go get -u github.com/gobuffalo/packr
+    // 生成静态资源
+    packr
+    // 清理资源
+    packr clean
+
+## 多平台编译
+
+安装 gox 编译包, 即可一键执行 gox 编译所有平台.
+
+    // 安装
+    go get github.com/mitchellh/gox
+    // 编译 linux, windows, mac 三个平台的可执行文件, 放到 release 目录下面
+    gox -output="release/{{.Dir}}_{{.OS}}_{{.Arch}}" -os="linux windows darwin" -arch="amd64 386"
+    
