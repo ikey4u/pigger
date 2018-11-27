@@ -177,11 +177,11 @@ func renderList(btlines [][]byte) (string) {
     for i := 0; i < len(btlines); i++ {
         line := strings.TrimRight(string(btlines[i]), " ")
         // If there should a item, then it must be the first
-        wantidx := len(line) - len(strings.TrimLeft(line, " "))
+        wantidx := len(line) - len(strings.TrimPrefix(line, " "))
         idx := strings.Index(line, "- ")
         // if the idx is not found or the item indicator is not the first
         if idx == -1 || line[wantidx:wantidx + 2] != "- " {
-            space := len(line) - len(strings.TrimLeft(line, " "))
+            space := len(line) - len(strings.TrimPrefix(line, " "))
             if space >= 8 {
                 codeblk := make([]byte, 0, 64)
                 for j := i; j < len(btlines); j++ {
@@ -448,10 +448,19 @@ func main() {
             headmeta := renderFile(box, infile, outfile)
 
             // metainfo for article
-            relin := strings.TrimLeft(infile, sitedir)
-            relout := strings.TrimLeft(outfile, sitedir)
-            // fmt.Printf("in: %s out: %s headmeta: %v\n", relin, relout, headmeta)
-            post[relin] = postmeta{Title: headmeta["title"], Date: headmeta["date"], Author: headmeta["author"], Article: "posts/" + relout}
+            // !!! Note that strings.TrimLeft is really tricky,
+            // it may does not work as expected, for example:
+            // s := "refs/tags/account"
+            // tag := strings.TrimLeft(s, "refs/tags")
+            // the code above will return "ccount".
+            // What the fuck? See https://stackoverflow.com/questions/29187086/why-trimleft-doesnt-work-as-expected
+            // for more details. Here we use strings.TrimPrefix indestead.
+            relin := strings.TrimPrefix(infile, sitedir + "/")
+            relout := strings.TrimPrefix(outfile, sitedir + "/")
+            fmt.Printf("sitedir: %s\n", sitedir)
+            fmt.Printf("infile: %s outfile: %s\n", infile, outfile)
+            fmt.Printf("in: %s out: %s headmeta: %v\n", relin, relout, headmeta)
+            post[relin] = postmeta{Title: headmeta["title"], Date: headmeta["date"], Author: headmeta["author"], Article: relout}
         }
 
         // create site index file(not index.html in case that user want to have their own
