@@ -31,7 +31,7 @@ type postmeta struct {
     Title string
     Date string
     Author string
-    Article string
+    Link template.URL // disable backslash escaping
 }
 
 func getHeadline(block []byte) (map[string]string) {
@@ -448,19 +448,26 @@ func main() {
             headmeta := renderFile(box, infile, outfile)
 
             // metainfo for article
-            // !!! Note that strings.TrimLeft is really tricky,
+            // Several things to notice:
+            // 1) Note that strings.TrimLeft is really tricky,
             // it may does not work as expected, for example:
-            // s := "refs/tags/account"
-            // tag := strings.TrimLeft(s, "refs/tags")
+            //  s := "refs/tags/account"
+            //  tag := strings.TrimLeft(s, "refs/tags")
             // the code above will return "ccount".
             // What the fuck? See https://stackoverflow.com/questions/29187086/why-trimleft-doesnt-work-as-expected
             // for more details. Here we use strings.TrimPrefix indestead.
-            relin := strings.TrimPrefix(infile, sitedir + "/")
-            relout := strings.TrimPrefix(outfile, sitedir + "/")
+            // 2) Here I use relative path to link files, but the path sepeartor
+            // in windows is slash. As a result, we should use filepath.ToSlash to make the
+            // path canonical.
+            // 3) When trim out the sitedir prefix from input or output file, there remains
+            // a path sepeartor in the first location, we should remove it
+            // 4) To avoid link is escaped in the template, we should use template.URL.
+            relin := filepath.ToSlash(strings.TrimPrefix(infile, sitedir)[1:])
+            relout := filepath.ToSlash(strings.TrimPrefix(outfile, sitedir)[1:])
             // fmt.Printf("sitedir: %s\n", sitedir)
             // fmt.Printf("infile: %s outfile: %s\n", infile, outfile)
             // fmt.Printf("in: %s out: %s headmeta: %v\n", relin, relout, headmeta)
-            post[relin] = postmeta{Title: headmeta["title"], Date: headmeta["date"], Author: headmeta["author"], Article: relout}
+            post[relin] = postmeta{Title: headmeta["title"], Date: headmeta["date"], Author: headmeta["author"], Link: template.URL(relout)}
         }
 
         // create site index file(not index.html in case that user want to have their own
