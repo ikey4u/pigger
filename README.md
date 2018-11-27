@@ -94,39 +94,3 @@
 
     使用 `@<somthing>` 表示一个链接, 如图是网址, 则渲染成一个 a 标签,
     如果是图片, 则渲染成 img 标签并拷贝图片.
-
-# 架构设计
-
-```
-// 静态资源
-etc/   # pigger 系统配置文件
-   ├── css/
-   │   ├── normalize.css
-   │   └── pigger.css
-   └── themes/
-       └── default.json
-
-// 新建目录
-SITE/
-    3w/         # 输出目录
-        css/
-        images/ # 图片
-        videos/ # 视频
-        aritcle-demo.html # 生成的样例文章
-        text-demo.html # 生成的样例文章
-        tmp/ # 临时文件
-        index.html # 首页
-    home/ # 写作平台
-        usr/  # 用户配置文件, 可以覆盖或扩展 pigger 系统配置
-            css/
-            themes/
-        assets/
-            images/
-            videos/
-        md-demo.md # markdown 文件
-        text-demo.txt # 文本文件
-        draft/ # 草稿文件, 生成 html 时将会跳过
-            drft-demo.md
-```
-
-用户只需要保留 `usr/` 和 `home/` 目录即可, 可以方便的实现迁移.
