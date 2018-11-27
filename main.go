@@ -22,7 +22,7 @@ import (
 type pigconf struct {
     style string
     // private variables
-    imgin_ string  // Location where read source images from
+    imgin_ string  // Location where read images from
     imgout_ string // Where images located in when output
 }
 var pc pigconf
@@ -34,7 +34,7 @@ type postmeta struct {
     Article string
 }
 
-func getHeadline(block []byte) (map[string]string, string) {
+func getHeadline(block []byte) (map[string]string) {
     headline := make(map[string]string)
     lines := bytes.Split(block, []byte{0xa})
     if string(lines[0]) != "---" || string(lines[len(lines) - 1]) != "---" {
@@ -53,31 +53,7 @@ func getHeadline(block []byte) (map[string]string, string) {
         val := strings.TrimSpace(info[1])
         headline[key] = val
     }
-
-    // may use template later
-    headhtml := ""
-    headhtml += "<!DOCTYPE html>\n"
-    headhtml += `<html lang="en">` + "\n"
-    headhtml += `<head>` + "\n"
-    headhtml += `<meta charset="UTF-8">` + "\n"
-    headhtml += "<title>" + headline["title"] + "</title>" + "\n"
-    headhtml += `<link href="` + pc.style + `/css/prism.css" rel="stylesheet" />` + "\n"
-    headhtml += `<link href="` + pc.style + `/css/normalize.css" rel="stylesheet" />` + "\n"
-    headhtml += `<link href="` + pc.style + `/css/pigger.css" rel="stylesheet" />` + "\n"
-    headhtml += "</head>" + "\n"
-    headhtml += `<body>` + "\n"
-    headhtml += `<div style="padding:1% 5% 1% 5%">` + "\n"
-    headhtml += `<section style="padding-top: 20px; padding-bottom: 5px; color: #fff; text-align: center; background-image: linear-gradient(120deg, #224a73, #0d4027);">` + "\n"
-    headhtml += `<h1 style="font-size: 2.25rem;">` + "\n"
-    headhtml += headline["title"]
-    headhtml += `</h1>` + "\n"
-    headhtml += `<h3 style="font-weight: normal; opacity: 0.7; font-size: 1.15rem;">` + "\n"
-    headhtml += headline["date"]
-    headhtml += ` by ` + headline["author"] + "\n"
-    headhtml += `</h3>` + "\n"
-    headhtml += `</section>`
-
-    return headline, headhtml
+    return headline
 }
 
 func renderLine(block []byte) (string){
@@ -307,7 +283,7 @@ func renderCode(block []byte, outindent int) string {
     return code
 }
 
-func renderFile(infile string, outfile string) map[string] string {
+func renderFile(box packr.Box, infile string, outfile string) map[string] string {
     input, err := ioutil.ReadFile(infile)
     if err != nil {
         log.Fatal("Cannot read input file!")
@@ -327,7 +303,7 @@ func renderFile(infile string, outfile string) map[string] string {
         if len(flag) >= 1 && flag[0] == '#' {
             rendered = renderTitle(block)
         } else if len(flag) >= 3 && flag == "---" {
-            headmeta, rendered = getHeadline(block)
+            headmeta = getHeadline(block)
         } else if len(flag) >= 2 && flag[0:2] == "- " {
             rendered = renderList(bytes.Split(block, []byte{0xa}))
         } else if len(flag) >= 4 && flag[0:4] == "    " {
@@ -341,19 +317,31 @@ func renderFile(infile string, outfile string) map[string] string {
         }
         dochtml += rendered + "\n"
     }
-    dochtml += `<script src="` + pc.style + `/js/prism.js"></script>` + "\n"
-    dochtml += "</div>" + "\n"
-    dochtml += "</body>" + "\n"
-    dochtml += "</html>" + "\n"
 
+    txt, _ := box.FindString("tpl/article.html")
+    tpl, err := template.New("T").Parse(txt)
+    if err != nil {
+        log.Fatal("Cannot parse tpl/article.html!")
+    }
     out, _ := os.Create(outfile)
     defer out.Close()
-    out.WriteString(dochtml)
-
+    articleData := struct {
+        Style string
+        Title string
+        Date string
+        Author string
+        Body template.HTML
+    }{
+        Style : pc.style,
+        Title: headmeta["title"],
+        Date: headmeta["date"],
+        Author: headmeta["author"],
+        Body: template.HTML(dochtml)} // no new line after the right brace
+    tpl.Execute(out, &articleData)
     return headmeta
 }
 
-func expandPath(p string) (out string){
+func expandPath(p string) (out string) {
     if strings.HasPrefix(p, "~") {
         usr, _ := user.Current()
         if len(p) > 1 {
@@ -457,7 +445,7 @@ func main() {
             pc.imgout_ = filepath.Join(outdir, "images")
             pc.style = "../pigger"
 
-            headmeta := renderFile(infile, outfile)
+            headmeta := renderFile(box, infile, outfile)
 
             // metainfo for article
             relin := strings.TrimLeft(infile, sitedir)
@@ -553,7 +541,7 @@ func main() {
         // render file
         pc.imgout_ = filepath.Join(outdir, "images")
         pc.imgin_ = filepath.Dir(infile)
-        renderFile(infile, outfile)
+        renderFile(box, infile, outfile)
         fmt.Printf("Save file into %s\n", outfile)
     }
 }
