@@ -8,11 +8,13 @@ import (
     "bytes"
     "strings"
     "html"
-    "github.com/gobuffalo/packr"
     "flag"
     "os/user"
     "path"
     "path/filepath"
+
+    "github.com/gobuffalo/packr"
+    "github.com/json-iterator/go"
 )
 
 type pigconf struct {
@@ -27,9 +29,7 @@ type postmeta struct {
     Title string
     Date string
     Author string
-}
-type post struct {
-    postmetas []postmeta
+    Article string
 }
 
 func getHeadline(block []byte) (map[string]string, string) {
@@ -409,7 +409,7 @@ func main() {
     }
     switch flag.Arg(0) {
     case "build":
-        fmt.Printf("Build all files ...\n")
+        // fmt.Printf("Build all files ...\n")
         // check if the current direcotry is a pigger project
         piggerconf := expandPath(filepath.Join(".", "posts", "pigger.json"))
         if _, err := os.Stat(piggerconf); os.IsNotExist(err) {
@@ -417,7 +417,7 @@ func main() {
             os.Exit(1)
         }
         sitedir := expandPath(".")
-        fmt.Printf("sitedir: %s\n", sitedir)
+        // fmt.Printf("sitedir: %s\n", sitedir)
 
         // Prepare all articles
         var articles []string
@@ -433,8 +433,8 @@ func main() {
         }
 
         // render all articles
-        for idx, article := range articles {
-            fmt.Printf("%2d: %s\n", idx, article)
+        post := make(map[string]postmeta)
+        for _, article := range articles {
             barename := strings.TrimRight(filepath.Base(article), ".txt")
             outdir := filepath.Join(sitedir, "posts", barename)
             if _, err := os.Stat(outdir); os.IsNotExist(err) {
@@ -453,9 +453,23 @@ func main() {
             // metainfo for article
             relin := strings.TrimLeft(infile, sitedir)
             relout := strings.TrimLeft(outfile, sitedir)
-            fmt.Printf("in: %s out: %s headmeta: %v\n", relin, relout, headmeta)
+            // fmt.Printf("in: %s out: %s headmeta: %v\n", relin, relout, headmeta)
+            post[relin] = postmeta{Title: headmeta["title"], Date: headmeta["date"], Author: headmeta["author"], Article: relout}
         }
-
+        // write posts metainfo into json file: pigger.json
+        // just for migration purpose
+        jstr, err := jsoniter.Marshal(post)
+        if err != nil {
+            log.Fatal("Cannot marshal post!\n")
+        }
+        jfile, err := os.OpenFile(filepath.Join(sitedir, "posts", "pigger.json"), os.O_WRONLY, 0600)
+        defer jfile.Close()
+        if err != nil {
+            log.Fatal("cannot open pigger.json");
+        }
+        if _, err = jfile.WriteString(string(jstr)); err != nil {
+            log.Fatal(err)
+        }
     case "new":
         if flag.NArg() != 2 {
             flag.Usage()
