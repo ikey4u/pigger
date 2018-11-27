@@ -18,6 +18,7 @@ import (
 type pigconf struct {
     style string
     // private variables
+    imgin_ string  // Location where read source images from
     imgout_ string // Where images located in when output
 }
 var pc pigconf
@@ -31,7 +32,7 @@ type post struct {
     postmetas []postmeta
 }
 
-func getHeadline(block []byte) string {
+func getHeadline(block []byte) (map[string]string, string) {
     headline := make(map[string]string)
     lines := bytes.Split(block, []byte{0xa})
     if string(lines[0]) != "---" || string(lines[len(lines) - 1]) != "---" {
@@ -73,7 +74,7 @@ func getHeadline(block []byte) string {
     headhtml += `</h3>` + "\n"
     headhtml += `</section>`
 
-    return headhtml
+    return headline, headhtml
 }
 
 func renderLine(block []byte) (string){
@@ -114,12 +115,15 @@ func renderLine(block []byte) (string){
                         // image
                         } else {
                             // copy image to destination dir
-                            inimg := expandPath(blk)
+                            inimg := expandPath(filepath.Join(pc.imgin_, blk))
+                            if _, err := os.Stat(pc.imgout_); os.IsNotExist(err) {
+                                os.Mkdir(pc.imgout_, os.ModePerm)
+                            }
                             outimg := filepath.Join(pc.imgout_, path.Base(blk))
                             // fmt.Printf("inimg: %s outimg: %s\n", inimg, outimg)
                             // avoid copy same image to itself
                             if inimg != outimg {
-                                imgdata, _ := ioutil.ReadFile(blk)
+                                imgdata, _ := ioutil.ReadFile(inimg)
                                 ioutil.WriteFile(outimg, imgdata, os.ModePerm)
                             }
                             htmlline += fmt.Sprintf("<img src=\"images/%s\"/>", path.Base(blk))
@@ -300,47 +304,39 @@ func renderCode(block []byte, outindent int) string {
     return code
 }
 
-func renderBlock(block []byte) string {
-    block = bytes.TrimPrefix(block, []byte{0xa})
-    lines := bytes.Split(block, []byte{0xa})
-    flag := string(lines[0])
-    if len(flag) >= 1 && flag[0] == '#' {
-        return renderTitle(block)
-    }
-
-    if len(flag) >= 3 && flag == "---" {
-        headline := getHeadline(block)
-        return headline
-    }
-
-    if len(flag) >= 2 && flag[0:2] == "- " {
-        items := renderList(bytes.Split(block, []byte{0xa}))
-        return items
-    }
-
-    if len(flag) >= 8 && flag[0:8] == "        " {
-        code := renderCode(block, 8)
-        return code
-    }
-
-    if len(flag) >= 4 && flag[0:4] == "    " {
-        code := renderCode(block, 4)
-        return code
-    }
-
-    return renderPara(block)
-}
-
-func renderFile(infile string, outfile string) {
+func renderFile(infile string, outfile string) map[string] string {
     input, err := ioutil.ReadFile(infile)
     if err != nil {
-        log.Fatal("Cannot read file!")
+        log.Fatal("Cannot read input file!")
     }
-    blocks := bytes.Split(input[0:], []byte{0xa, 0xa})
 
+    blocks := bytes.Split(input[0:], []byte{0xa, 0xa})
     dochtml := ""
+    headmeta := make(map[string]string)
     for _, block := range blocks {
-        dochtml += renderBlock(block) + "\n"
+        // for each block, remove its prefix empty newline
+        block = bytes.TrimPrefix(block, []byte{0xa})
+        // split the block into lines and check the block type
+        lines := bytes.Split(block, []byte{0xa})
+        flag := string(lines[0])
+        // check type and render html
+        rendered := ""
+        if len(flag) >= 1 && flag[0] == '#' {
+            rendered = renderTitle(block)
+        } else if len(flag) >= 3 && flag == "---" {
+            headmeta, rendered = getHeadline(block)
+        } else if len(flag) >= 2 && flag[0:2] == "- " {
+            rendered = renderList(bytes.Split(block, []byte{0xa}))
+        } else if len(flag) >= 4 && flag[0:4] == "    " {
+            if len(flag) >= 8 && flag[0:8] == "        " {
+                rendered = renderCode(block, 8)
+            } else {
+                rendered = renderCode(block, 4)
+            }
+        } else {
+            rendered = renderPara(block)
+        }
+        dochtml += rendered + "\n"
     }
     dochtml += `<script src="` + pc.style + `/js/prism.js"></script>` + "\n"
     dochtml += "</body>" + "\n"
@@ -349,6 +345,8 @@ func renderFile(infile string, outfile string) {
     out, _ := os.Create(outfile)
     defer out.Close()
     out.WriteString(dochtml)
+
+    return headmeta
 }
 
 func expandPath(p string) (out string){
@@ -412,6 +410,52 @@ func main() {
     switch flag.Arg(0) {
     case "build":
         fmt.Printf("Build all files ...\n")
+        // check if the current direcotry is a pigger project
+        piggerconf := expandPath(filepath.Join(".", "posts", "pigger.json"))
+        if _, err := os.Stat(piggerconf); os.IsNotExist(err) {
+            fmt.Printf("Not a pigger site, if it does is, please run this command in the pigger root!\n")
+            os.Exit(1)
+        }
+        sitedir := expandPath(".")
+        fmt.Printf("sitedir: %s\n", sitedir)
+
+        // Prepare all articles
+        var articles []string
+        if tmp, err := filepath.Glob(filepath.Join(sitedir, "*.txt")); err == nil {
+            articles = append(articles, tmp...)
+        } else {
+            log.Fatal(err)
+        }
+        if tmp, err := filepath.Glob(filepath.Join(sitedir, "home", "*.txt")); err == nil {
+            articles = append(articles, tmp...)
+        } else {
+            log.Fatal(err)
+        }
+
+        // render all articles
+        for idx, article := range articles {
+            fmt.Printf("%2d: %s\n", idx, article)
+            barename := strings.TrimRight(filepath.Base(article), ".txt")
+            outdir := filepath.Join(sitedir, "posts", barename)
+            if _, err := os.Stat(outdir); os.IsNotExist(err) {
+                os.Mkdir(outdir, os.ModePerm)
+            }
+            infile := article
+            outfile := filepath.Join(outdir, "index.html")
+
+            // set style
+            pc.imgin_ = filepath.Dir(infile)
+            pc.imgout_ = filepath.Join(outdir, "images")
+            pc.style = "../pigger"
+
+            headmeta := renderFile(infile, outfile)
+
+            // metainfo for article
+            relin := strings.TrimLeft(infile, sitedir)
+            relout := strings.TrimLeft(outfile, sitedir)
+            fmt.Printf("in: %s out: %s headmeta: %v\n", relin, relout, headmeta)
+        }
+
     case "new":
         if flag.NArg() != 2 {
             flag.Usage()
@@ -419,17 +463,21 @@ func main() {
         }
         sitedir := expandPath(flag.Arg(1))
         fmt.Printf("Create new site %s ...\n", sitedir)
-        // unpackResource will create the dir if it does not exist
-        unpackResource(box, filepath.Join(sitedir, "posts", "pigger"))
-        os.MkdirAll(filepath.Join(sitedir, "images"), os.ModePerm)
-        os.MkdirAll(filepath.Join(sitedir, "home"), os.ModePerm)
-        // create pigger configuration pigger.json
-        piggerconf, err := os.Create(filepath.Join(sitedir, "posts", "pigger.json"))
-        defer piggerconf.Close()
-        if err != nil {
-            log.Fatal("Cannot create pigger config file!\n")
+        if _, err := os.Stat(sitedir); os.IsNotExist(err) {
+            // unpackResource will create the dir if it does not exist
+            unpackResource(box, filepath.Join(sitedir, "posts", "pigger"))
+            os.MkdirAll(filepath.Join(sitedir, "images"), os.ModePerm)
+            os.MkdirAll(filepath.Join(sitedir, "home", "images"), os.ModePerm)
+            // create pigger configuration pigger.json
+            piggerconf, err := os.Create(filepath.Join(sitedir, "posts", "pigger.json"))
+            defer piggerconf.Close()
+            if err != nil {
+                log.Fatal("Cannot create pigger config file!\n")
+            }
+            fmt.Printf("Good! The new site is created successfully and could be found at %s!\n", sitedir)
+        } else {
+            fmt.Printf("The site is already there.\n")
         }
-        fmt.Printf("Good! The new site is created successfully and could be found at %s!\n", sitedir)
     default:
         infile := expandPath(flag.Arg(0))
         // test if input file is exist
@@ -462,7 +510,8 @@ func main() {
             pc.style = "."
         }
         // render file
-        pc.imgout_ = filepath.Join(outdir, "images"); os.Mkdir(pc.imgout_, os.ModePerm)
+        pc.imgout_ = filepath.Join(outdir, "images")
+        pc.imgin_ = filepath.Dir(infile)
         renderFile(infile, outfile)
         fmt.Printf("Save file into %s\n", outfile)
     }
