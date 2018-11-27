@@ -12,6 +12,8 @@ import (
     "os/user"
     "path"
     "path/filepath"
+    "html/template"
+    "sort"
 
     "github.com/gobuffalo/packr"
     "github.com/json-iterator/go"
@@ -55,7 +57,7 @@ func getHeadline(block []byte) (map[string]string, string) {
     // may use template later
     headhtml := ""
     headhtml += "<!DOCTYPE html>\n"
-    headhtml += `<html width="97%" lang="en">` + "\n"
+    headhtml += `<html lang="en">` + "\n"
     headhtml += `<head>` + "\n"
     headhtml += `<meta charset="UTF-8">` + "\n"
     headhtml += "<title>" + headline["title"] + "</title>" + "\n"
@@ -63,7 +65,8 @@ func getHeadline(block []byte) (map[string]string, string) {
     headhtml += `<link href="` + pc.style + `/css/normalize.css" rel="stylesheet" />` + "\n"
     headhtml += `<link href="` + pc.style + `/css/pigger.css" rel="stylesheet" />` + "\n"
     headhtml += "</head>" + "\n"
-    headhtml += `<body style="margin: 1% 5% 1% 5%;">` + "\n"
+    headhtml += `<body>` + "\n"
+    headhtml += `<div style="padding:1% 5% 1% 5%">` + "\n"
     headhtml += `<section style="padding-top: 20px; padding-bottom: 5px; color: #fff; text-align: center; background-image: linear-gradient(120deg, #224a73, #0d4027);">` + "\n"
     headhtml += `<h1 style="font-size: 2.25rem;">` + "\n"
     headhtml += headline["title"]
@@ -339,6 +342,7 @@ func renderFile(infile string, outfile string) map[string] string {
         dochtml += rendered + "\n"
     }
     dochtml += `<script src="` + pc.style + `/js/prism.js"></script>` + "\n"
+    dochtml += "</div>" + "\n"
     dochtml += "</body>" + "\n"
     dochtml += "</html>" + "\n"
 
@@ -367,9 +371,10 @@ func unpackResource(box packr.Box, unpack2dir string) {
     if _, err := os.Stat(unpack2dir); os.IsNotExist(err) {
         os.MkdirAll(unpack2dir, os.ModePerm)
     }
-    resource := [...]string{"normalize.css", "pigger.css", "prism.css", "prism.js"}
+    resource := [...]string{"normalize.css", "pigger.css", "prism.css", "prism.js", "site.html"}
     cssdir := filepath.Join(unpack2dir, "css"); os.Mkdir(cssdir, os.ModePerm)
     jsdir := filepath.Join(unpack2dir, "js"); os.Mkdir(jsdir, os.ModePerm)
+    tpldir := filepath.Join(unpack2dir, "tpl"); os.Mkdir(tpldir, os.ModePerm)
     for _, f := range resource {
         if strings.HasSuffix(f, ".css") {
             fout, _ := os.Create(filepath.Join(cssdir, f))
@@ -378,6 +383,10 @@ func unpackResource(box packr.Box, unpack2dir string) {
         } else if strings.HasSuffix(f, ".js") {
             fout, _ := os.Create(filepath.Join(jsdir, f))
             txt, _ := box.FindString("js/" + f)
+            fout.WriteString(txt)
+        } else if strings.HasSuffix(f, ".html") {
+            fout, _ := os.Create(filepath.Join(tpldir, f))
+            txt, _ := box.FindString("tpl/" + f)
             fout.WriteString(txt)
         }
     }
@@ -454,8 +463,26 @@ func main() {
             relin := strings.TrimLeft(infile, sitedir)
             relout := strings.TrimLeft(outfile, sitedir)
             // fmt.Printf("in: %s out: %s headmeta: %v\n", relin, relout, headmeta)
-            post[relin] = postmeta{Title: headmeta["title"], Date: headmeta["date"], Author: headmeta["author"], Article: relout}
+            post[relin] = postmeta{Title: headmeta["title"], Date: headmeta["date"], Author: headmeta["author"], Article: "posts/" + relout}
         }
+
+        // create site index file(not index.html in case that user want to have their own
+        // home page)
+        siteindex, err := os.Create(filepath.Join(sitedir, "site.html"))
+        defer siteindex.Close()
+        tpl, err := template.ParseFiles(filepath.Join(sitedir, "posts", "pigger", "tpl", "site.html"))
+        if err != nil {
+            log.Fatal("Cannot parse site.html template!")
+        }
+        postitems := make([]postmeta, 0)
+        for _, v := range post {
+            postitems = append(postitems, v)
+        }
+        sort.Slice(postitems, func(i, j int) bool {
+            return postitems[i].Date > postitems[j].Date
+        })
+        tpl.Execute(siteindex, &postitems)
+
         // write posts metainfo into json file: pigger.json
         // just for migration purpose
         jstr, err := jsoniter.Marshal(post)
