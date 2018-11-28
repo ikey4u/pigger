@@ -273,7 +273,8 @@ func renderCode(block []byte, outindent int) string {
         if no == len(btlines) - 1 && len(bytes.TrimSpace(btline)) == 0 {
             continue
         }
-        if outindent > len(btline) {
+        space := len(btline) - len(bytes.TrimSpace(btline))
+        if outindent > space {
             outindent = 0
         }
         line := html.EscapeString(string(btline[outindent:]))
@@ -283,36 +284,90 @@ func renderCode(block []byte, outindent int) string {
     return code
 }
 
-func renderFile(box packr.Box, infile string, outfile string) map[string] string {
+func getBlockType(block []byte) string {
+    block = bytes.TrimPrefix(block, []byte{0xa})
+    lines := bytes.Split(block, []byte{0xa})
+    flag := string(lines[0])
+    if len(flag) >= 1 && flag[0] == '#' {
+        return "TITLE"
+    } else if len(flag) >= 3 && flag == "---" {
+        return "META"
+    } else if len(flag) >= 2 && flag[0:2] == "- " {
+        return "LIST"
+    } else if len(flag) >= 4 && flag[0:4] == "    " {
+        if len(flag) >= 8 && flag[0:8] == "        " {
+            return "CODE8"
+        } else {
+            return "CODE4"
+        }
+    } else {
+        return "PARA"
+    }
+}
+
+func splitFile(infile string) [][]byte {
     input, err := ioutil.ReadFile(infile)
     if err != nil {
         log.Fatal("Cannot read input file!")
     }
-
+    chunks := make([][]byte, 0)
     blocks := bytes.Split(input[0:], []byte{0xa, 0xa})
+    for i := 0; i < len(blocks); i++ {
+        chunk := make([]byte, 0)
+        // merge CODE4 block
+        if getBlockType(blocks[i]) == "CODE4" {
+            j := i
+            for ; j < len(blocks) && getBlockType(blocks[j]) == "CODE4"; j++ {
+                chunk = append(chunk, 0xa)
+                chunk = append(chunk, blocks[j]...)
+                // well, it is really tricky
+                chunk = append(chunk, "\n    "...)
+            }
+            i = j - 1
+        // merge CODE8 block
+        } else if getBlockType(blocks[i]) == "LIST" {
+            chunk = append(chunk, blocks[i]...)
+            j := i + 1
+            for ; j < len(blocks) && getBlockType(blocks[j]) == "CODE8"; j++ {
+                chunk = append(chunk, 0xa)
+                chunk = append(chunk, "        \n"...)
+                chunk = append(chunk, blocks[j]...)
+            }
+            i = j - 1
+        } else {
+            chunk = append(chunk, 0xa)
+            chunk = append(chunk, blocks[i]...)
+        }
+        chunks = append(chunks, chunk)
+    }
+    return chunks
+}
+
+func renderFile(box packr.Box, infile string, outfile string) map[string] string {
+    blocks := splitFile(infile)
     dochtml := ""
     headmeta := make(map[string]string)
     for _, block := range blocks {
-        // for each block, remove its prefix empty newline
+        // For each block, remove its prefix empty newline
+        // I am pullzed by golang's Trim, TrimPrefix, TrimLeft ...
+        // so I write the both version, it works however ..
         block = bytes.TrimPrefix(block, []byte{0xa})
-        // split the block into lines and check the block type
-        lines := bytes.Split(block, []byte{0xa})
-        flag := string(lines[0])
-        // check type and render html
+        block = bytes.Trim(block, "\n")
+
+        // render article
         rendered := ""
-        if len(flag) >= 1 && flag[0] == '#' {
+        switch getBlockType(block) {
+        case "TITLE":
             rendered = renderTitle(block)
-        } else if len(flag) >= 3 && flag == "---" {
+        case "META":
             headmeta = getHeadline(block)
-        } else if len(flag) >= 2 && flag[0:2] == "- " {
+        case "LIST":
             rendered = renderList(bytes.Split(block, []byte{0xa}))
-        } else if len(flag) >= 4 && flag[0:4] == "    " {
-            if len(flag) >= 8 && flag[0:8] == "        " {
-                rendered = renderCode(block, 8)
-            } else {
-                rendered = renderCode(block, 4)
-            }
-        } else {
+        case "CODE4":
+            rendered = renderCode(block, 4)
+        case "CODE8":
+            rendered = renderCode(block, 8)
+        default:
             rendered = renderPara(block)
         }
         dochtml += rendered + "\n"
