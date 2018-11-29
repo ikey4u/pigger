@@ -317,7 +317,7 @@ func splitFile(infile string) [][]byte {
         // merge CODE4 block
         if getBlockType(blocks[i]) == "CODE4" {
             j := i
-            for ; j < len(blocks) && getBlockType(blocks[j]) == "CODE4"; j++ {
+            for ; j < len(blocks) && strings.HasPrefix(getBlockType(blocks[j]), "CODE"); j++ {
                 chunk = append(chunk, 0xa)
                 chunk = append(chunk, blocks[j]...)
                 // well, it is really tricky
@@ -328,7 +328,7 @@ func splitFile(infile string) [][]byte {
         } else if getBlockType(blocks[i]) == "LIST" {
             chunk = append(chunk, blocks[i]...)
             j := i + 1
-            for ; j < len(blocks) && getBlockType(blocks[j]) == "CODE8"; j++ {
+            for ; j < len(blocks) && strings.HasPrefix(getBlockType(blocks[j]), "CODE"); j++ {
                 chunk = append(chunk, 0xa)
                 chunk = append(chunk, "        \n"...)
                 chunk = append(chunk, blocks[j]...)
