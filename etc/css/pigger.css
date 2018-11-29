@@ -1,10 +1,22 @@
 html,
 body {
     height: 100%;
+    font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    color: #606c71;
+}
+
+p {
+    display: block;
+    margin-block-start: 1em;
+    margin-block-end: 1em;
+    margin-inline-start: 0px;
+    margin-inline-end: 0px;
 }
 
 /** 设置图片居中显示并带有阴影效果 **/
-img{
+img {
     -webkit-box-shadow: 8px 8px 8px rgba(0, 0, 0, 0.5);
     -moz-box-shadow: 8px 8px 8px rgba(0, 0, 0, 0.5);
     box-shadow: 8px 8px 8px rgba(0, 0, 0, 0.5);
@@ -22,8 +34,9 @@ img{
 }
 
 /*去掉超链接的下标*/
-a{
-    text-decoration:none;
+a {
+  color: #1e6bb8;
+  text-decoration:none;
 }
 
 /*3D文本*/

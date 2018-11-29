@@ -435,6 +435,17 @@ func unpackResource(box packr.Box, unpack2dir string) {
     }
 }
 
+func isPiggerSite(sitedir string) bool {
+    // fmt.Printf("Build all files ...\n")
+    // check if the current direcotry is a pigger project
+    piggerconf := expandPath(filepath.Join(sitedir, "posts", "pigger.json"))
+    if _, err := os.Stat(piggerconf); os.IsNotExist(err) {
+        return false
+    } else {
+        return true
+    }
+}
+
 func main() {
     // pack static resources
     box := packr.NewBox("./etc")
@@ -452,6 +463,8 @@ func main() {
         fmt.Printf("ACTIONS:\n")
         fmt.Printf("  build: Build all files\n")
         fmt.Printf("  new <sitename>: Create a new site\n")
+        fmt.Printf("  update [style]: Update stuffs for pigger site\n")
+        fmt.Printf("         style: update embedded style files such as css, js etc.\n")
     }
     flag.Parse()
     // check cmd args
@@ -461,16 +474,11 @@ func main() {
     }
     switch flag.Arg(0) {
     case "build":
-        // fmt.Printf("Build all files ...\n")
-        // check if the current direcotry is a pigger project
-        piggerconf := expandPath(filepath.Join(".", "posts", "pigger.json"))
-        if _, err := os.Stat(piggerconf); os.IsNotExist(err) {
+        sitedir := expandPath(".")
+        if !isPiggerSite(sitedir) {
             fmt.Printf("Not a pigger site, if it does is, please run this command in the pigger root!\n")
             os.Exit(1)
         }
-        sitedir := expandPath(".")
-        // fmt.Printf("sitedir: %s\n", sitedir)
-
         // Prepare all articles
         var articles []string
         if tmp, err := filepath.Glob(filepath.Join(sitedir, "*.txt")); err == nil {
@@ -588,6 +596,22 @@ func main() {
             fmt.Printf("Good! The new site is created successfully and could be found at %s!\n", sitedir)
         } else {
             fmt.Printf("The site is already there.\n")
+        }
+    case "update":
+        if flag.NArg() != 2 {
+            flag.Usage()
+            log.Fatal("What do you want to update?\n")
+        }
+        switch flag.Arg(1) {
+        case "style":
+            if !isPiggerSite(expandPath(".")) {
+                fmt.Printf("Not a pigger site, if it does is, please run this command in the pigger root!\n")
+                os.Exit(1)
+            } else {
+                unpackResource(box, filepath.Join(expandPath("."), "posts", "pigger"))
+            }
+        default:
+            log.Fatal("Unknown update option!\n")
         }
     default:
         infile := expandPath(flag.Arg(0))
