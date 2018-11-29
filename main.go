@@ -597,8 +597,6 @@ func main() {
         if _, err := os.Stat(sitedir); os.IsNotExist(err) {
             // unpackResource will create the dir if it does not exist
             unpackResource(box, filepath.Join(sitedir, "posts", "pigger"))
-            os.MkdirAll(filepath.Join(sitedir, "images"), os.ModePerm)
-            os.MkdirAll(filepath.Join(sitedir, "home", "images"), os.ModePerm)
             // create pigger configuration pigger.json
             piggerconf, err := os.Create(filepath.Join(sitedir, "posts", "pigger.json"))
             defer piggerconf.Close()
