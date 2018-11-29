@@ -83,16 +83,22 @@ func renderLine(block []byte) (string){
                     idx := strings.IndexRune(remain, ']')
                     // find ']' and there is at least one character in '[]'
                     if idx != -1 && idx > 1{
-                        blk := string(remain[1:idx])
-                        // link
-                        if strings.HasPrefix(blk, "http") || strings.HasPrefix(blk, "ftp") {
-                            link := blk
-                            if len(blk) > 32 {
-                                link = blk[0:32] + "..."
+                        blk := strings.TrimSpace(string(remain[1:idx]))
+                        // lambda function to check if the link is an image
+                        isimg := func(link string) bool {
+                            if dotidx := strings.LastIndex(link, "."); dotidx != -1 {
+                                link = link[dotidx:]
+                                switch link {
+                                case ".gif", ".png", ".jpg", ".jpeg", ".svg":
+                                    return true
+                                default:
+                                    return false
+                                }
+                            } else {
+                                return false
                             }
-                            htmlline += fmt.Sprintf("<a href=\"%s\">%s</a>", blk, link)
-                        // image
-                        } else {
+                        }(blk)
+                        if isimg {
                             // copy image to destination dir
                             inimg := expandPath(filepath.Join(pc.imgin_, blk))
                             if _, err := os.Stat(pc.imgout_); os.IsNotExist(err) {
@@ -106,6 +112,12 @@ func renderLine(block []byte) (string){
                                 ioutil.WriteFile(outimg, imgdata, os.ModePerm)
                             }
                             htmlline += fmt.Sprintf("<img src=\"images/%s\"/>", path.Base(blk))
+                        } else {
+                            link := blk
+                            if len(blk) > 32 {
+                                link = blk[0:32] + "..."
+                            }
+                            htmlline += fmt.Sprintf("<a href=\"%s\">%s</a>", blk, link)
                         }
                         i += 2 + len(blk)
                     } else {
