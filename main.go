@@ -540,6 +540,17 @@ func main() {
         sort.Slice(postitems, func(i, j int) bool {
             return postitems[i].Date > postitems[j].Date
         })
+
+        // check if there is migration
+        migration := filepath.Join(sitedir, "migration", "index.json")
+        if data, err := ioutil.ReadFile(migration); err == nil {
+            mig := make([]postmeta, 0)
+            jsoniter.Unmarshal(data, &mig)
+            for idx, v := range(mig) {
+                mig[idx].Link = template.URL(filepath.Join("migration", string(v.Link)))
+            }
+            postitems = append(postitems, mig...)
+        }
         tpl.Execute(siteindex, &postitems)
 
         // write posts metainfo into json file: pigger.json
