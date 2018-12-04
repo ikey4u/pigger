@@ -649,13 +649,17 @@ func main() {
         }
     default:
         infile := expandPath(flag.Arg(0))
+        // prepare input and output
+        _, fname := path.Split(infile)
+        if path.Ext(fname) != ".txt" {
+            fmt.Printf("Pigger only deals with text file (with a '.txt' suffix).\n")
+            os.Exit(1)
+        }
         // test if input file is exist
         if _, err := os.Stat(infile); os.IsNotExist(err) {
             log.Fatal("Input file is not exist!\n")
         }
-        // prepare input and output
-        _, fname := path.Split(infile)
-        barename := strings.TrimRight(fname, path.Ext(fname))
+        barename := strings.TrimSuffix(fname, path.Ext(fname))
         if outbase == "" {
             outbase, _ = filepath.Abs(".")
         } else {
