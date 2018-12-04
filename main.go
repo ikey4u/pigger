@@ -14,6 +14,7 @@ import (
     "path/filepath"
     "html/template"
     "sort"
+    "time"
 
     "github.com/gobuffalo/packr"
     "github.com/json-iterator/go"
@@ -383,6 +384,17 @@ func renderFile(box packr.Box, infile string, outfile string) map[string] string
             rendered = renderPara(block)
         }
         dochtml += rendered + "\n"
+    }
+
+    if len(headmeta) == 0 {
+        fmt.Printf("[Warn] You do not supply any head meta information!\n")
+        headmeta["title"] = filepath.Base(infile)
+        headmeta["author"] = "Anonymous"
+        curtm := time.Now().Local()
+        curyear := fmt.Sprintf("%04d", curtm.Year())
+        curmonth := fmt.Sprintf("%02d", curtm.Month())
+        curday := fmt.Sprintf("%02d", curtm.Day())
+        headmeta["date"]  =  curyear + "-" + curmonth + "-" + curday
     }
 
     txt, _ := box.FindString("tpl/article.html")
