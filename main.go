@@ -507,7 +507,7 @@ func main() {
         // render all articles
         post := make(map[string]postmeta)
         for _, article := range articles {
-            barename := strings.TrimRight(filepath.Base(article), ".txt")
+            barename := strings.TrimSuffix(filepath.Base(article), ".txt")
             outdir := filepath.Join(sitedir, "posts", barename)
             if _, err := os.Stat(outdir); os.IsNotExist(err) {
                 os.Mkdir(outdir, os.ModePerm)
