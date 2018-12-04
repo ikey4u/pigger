@@ -417,6 +417,18 @@ func renderFile(box packr.Box, infile string, outfile string) map[string] string
         Author: headmeta["author"],
         Body: template.HTML(dochtml)} // no new line after the right brace
     tpl.Execute(out, &articleData)
+
+    // save a txt copy into the web, the user may append a ".txt" suffix to the web url
+    // to view the original text content
+    intxt, err := ioutil.ReadFile(infile)
+    if err != nil {
+        log.Fatal("Cannot read text file: %s\n", infile)
+    }
+    err = ioutil.WriteFile(outfile + ".txt", intxt, os.ModePerm)
+    if err != nil {
+        log.Fatal("Cannot write text file: %s\n", outfile + ".txt")
+    }
+
     return headmeta
 }
 
