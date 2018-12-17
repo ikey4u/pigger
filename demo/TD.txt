@@ -1,0 +1,70 @@
+---
+title: code preview with blank line
+date: 2018-11-28
+author: bugnofree
+---
+
+# what the fuck
+
+    //: c
+    #include <stdio.h>
+    #include <string.h>
+
+    int main(int argc, char **argv)
+    {
+        char str[1024];
+
+        strcpy(str, argv[1]);
+        printf("%s\n", str);
+        return 0;
+    }
+
+# 独立代码段测试
+
+    package main
+
+    import (
+       "crypto/md5"
+       "encoding/hex"
+       "fmt"
+       "math/rand"
+       "time"
+       "os"
+    )
+
+    func MD5(text string) string {
+       ctx := md5.New()
+       ctx.Write([]byte(text))
+       return hex.EncodeToString(ctx.Sum(nil))
+    }
+
+    func GetRandomString(k int) string {
+       str := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+       bytes := []byte(str)
+       result := []byte{}
+       r := rand.New(rand.NewSource(time.Now().UnixNano()))
+       for i := 0; i < k; i++ {
+          result = append(result, bytes[r.Intn(len(bytes))])
+       }
+       return string(result)
+    }
+
+    func brute(salt, submd5 string, cmpsz int) string {
+        for {
+            s := GetRandomString(cmpsz)
+            if MD5(s + salt)[:4] == submd5 {
+                return s;
+            }
+        }
+    }
+
+
+
+# 列表代码段测试
+
+- 这是一段列表代码
+        func main() {
+            key := brute(os.Args[1], os.Args[2], 5)
+
+            fmt.Printf("Key is %s\n", key)
+        }
