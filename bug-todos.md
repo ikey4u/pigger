@@ -1,8 +1,24 @@
 # bugs
 
 - 标题中的高亮无法渲染, 如
+```
+### `char **ss` 与 `char *ss[]`
+```
 
-    ### `char **ss` 与 `char *ss[]`
+- 下面这种代码高亮无法正常渲染
+```
+                       MISCELLANEOUS COMMANDS
+
+     -<flag>              Toggle a command line option [see OPTIONS below].
+     --<name>             Toggle a command line option, by name.
+     _<flag>              Display the setting of a command line option.
+     __<name>             Display the setting of an option, by name.
+     +cmd                 Execute the less cmd each time a new file is examined.
+     !command             Execute the shell command with $SHELL.
+     |Xcommand            Pipe file between current pos & mark X to shell command.
+     v                    Edit the current file with $VISUAL or $EDITOR.
+     V                    Print version number of "less".
+```
 
 # todo
 
