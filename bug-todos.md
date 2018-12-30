@@ -78,3 +78,5 @@
 
 - 添加博客文章末尾的版权信息
 
+- 在 pigger 站点主目录下面添加一个 .gitignore 文件和一个 draft 文件夹, 初始化 .gitignore
+内容为 draft. 将 draft 文件夹用作一个草稿目录.
