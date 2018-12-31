@@ -15,6 +15,8 @@ import (
     "html/template"
     "sort"
     "time"
+    "crypto/md5"
+    "encoding/hex"
 
     "github.com/gobuffalo/packr"
     "github.com/json-iterator/go"
@@ -266,7 +268,6 @@ func renderTitle(block []byte) string {
 
     // check corner case: '###' => no title
     if len(title) == 0 {
-        fmt.Printf("[Warn] No title found!\n")
         title = "[NO TITLE]"
     }
 
@@ -367,6 +368,18 @@ func splitFile(infile string) [][]byte {
     return chunks
 }
 
+func getCurrentDate() map[string]string {
+    d := make(map[string]string)
+    curtm := time.Now().Local()
+    curyear := fmt.Sprintf("%04d", curtm.Year())
+    curmonth := fmt.Sprintf("%02d", curtm.Month())
+    curday := fmt.Sprintf("%02d", curtm.Day())
+    d["year"] = curyear
+    d["month"] = curmonth
+    d["day"] = curday
+    return d
+}
+
 func renderFile(box packr.Box, infile string, outfile string) map[string] string {
     blocks := splitFile(infile)
     dochtml := ""
@@ -396,16 +409,15 @@ func renderFile(box packr.Box, infile string, outfile string) map[string] string
         }
         dochtml += rendered + "\n"
     }
-
+    // set latest update date
+    d := getCurrentDate()
+    headmeta["latest"] = d["year"] + "-" + d["month"] + "-" + d["day"]
+    // set default headline meta
     if len(headmeta) == 0 {
         fmt.Printf("[Warn] You do not supply any head meta information!\n")
         headmeta["title"] = filepath.Base(infile)
         headmeta["author"] = "Anonymous"
-        curtm := time.Now().Local()
-        curyear := fmt.Sprintf("%04d", curtm.Year())
-        curmonth := fmt.Sprintf("%02d", curtm.Month())
-        curday := fmt.Sprintf("%02d", curtm.Day())
-        headmeta["date"]  =  curyear + "-" + curmonth + "-" + curday
+        headmeta["date"]  = headmeta["latest"]
     }
 
     txt, _ := box.FindString("tpl/article.html")
@@ -420,12 +432,14 @@ func renderFile(box packr.Box, infile string, outfile string) map[string] string
         Title string
         Date string
         Author string
+        Latest string // The lasted update date
         Body template.HTML
     }{
         Style : pc.style,
         Title: headmeta["title"],
         Date: headmeta["date"],
         Author: headmeta["author"],
+        Latest: headmeta["latest"],
         Body: template.HTML(dochtml)} // no new line after the right brace
     tpl.Execute(out, &articleData)
 
@@ -493,6 +507,37 @@ func isPiggerSite(sitedir string) bool {
     }
 }
 
+func getFileHash(path string) map[string]string {
+    data, err := ioutil.ReadFile(path)
+    if err != nil {
+        log.Fatal("Cannot open file %s to calculate hash!", path)
+    }
+    hash := make(map[string]string)
+    // From https://gist.github.com/sergiotapia/8263278
+    hasher := md5.New()
+    hasher.Write(data)
+    hash["md5"] = hex.EncodeToString(hasher.Sum(nil))
+    return hash
+}
+
+func hasUpdated(oldfile string, newfile string) bool {
+    if _, err := os.Stat(oldfile); os.IsNotExist(err) {
+        fmt.Printf("Cannot find the file %s!", oldfile)
+        return false
+    }
+    if _, err := os.Stat(newfile); os.IsNotExist(err) {
+        fmt.Printf("Cannot find the file %s!", newfile)
+        return false
+    }
+    oldmd5 := getFileHash(oldfile)["md5"]
+    newmd5 := getFileHash(newfile)["md5"]
+    if oldmd5 != newmd5 {
+        return true
+    } else {
+        return false
+    }
+}
+
 func main() {
     // pack static resources
     box := packr.NewBox("./etc")
@@ -549,6 +594,11 @@ func main() {
             }
             infile := article
             outfile := filepath.Join(outdir, "index.html")
+
+            if !hasUpdated(infile, outfile + ".txt") {
+                fmt.Printf("%s is remained unchanged ... skipped!\n")
+                continue
+            }
 
             // set style
             pc.imgin_ = filepath.Dir(infile)
@@ -681,22 +731,27 @@ func main() {
         }
         outdir := filepath.Join(outbase, barename);os.Mkdir(outdir, os.ModePerm)
         outfile := filepath.Join(outdir, "index.html")
-        // unpack static resources
-        if cutoff {
-            if style == "" {
-                pc.style = "../pigger"
-                unpackResource(box, expandPath(filepath.Join(outdir, pc.style)))
+
+        if hasUpdated(infile, outfile + ".txt") {
+            // unpack static resources
+            if cutoff {
+                if style == "" {
+                    pc.style = "../pigger"
+                    unpackResource(box, expandPath(filepath.Join(outdir, pc.style)))
+                } else {
+                    pc.style = style
+                }
             } else {
-                pc.style = style
+                unpackResource(box, outdir)
+                pc.style = "."
             }
+            // render file
+            pc.imgout_ = filepath.Join(outdir, "images")
+            pc.imgin_ = filepath.Dir(infile)
+            renderFile(box, infile, outfile)
+            fmt.Printf("Save file into %s\n", outfile)
         } else {
-            unpackResource(box, outdir)
-            pc.style = "."
+            fmt.Printf("%s is remained unchanged, skipped!\n", infile)
         }
-        // render file
-        pc.imgout_ = filepath.Join(outdir, "images")
-        pc.imgin_ = filepath.Dir(infile)
-        renderFile(box, infile, outfile)
-        fmt.Printf("Save file into %s\n", outfile)
     }
 }

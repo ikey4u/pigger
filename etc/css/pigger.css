@@ -5,6 +5,7 @@ body {
     font-size: 16px;
     line-height: 1.5;
     color: #606c71;
+    counter-reset: h1idx;
 }
 
 p {
@@ -81,4 +82,62 @@ ol.archive {
 #footer {
   margin-bottom:1%;
   text-align:center;
+}
+
+/* Auto number title:
+ * Ref:
+ * - http://2ality.com/2012/01/numbering-headingshtml.html
+ * - https://support.typora.io/Auto-Numbering/
+ */
+
+/* h1idx is initialized in body */
+h1 { counter-reset: h2idx; }
+h2 { counter-reset: h3idx; }
+h3 { counter-reset: h4idx; }
+h4 { counter-reset: h5idx; }
+h5 { counter-reset: h6idx; }
+h6 {}
+h1:before {
+  counter-increment: h1idx;
+  content: counter(h1idx) ".\0000a0\0000a0";
+}
+/* the pesudoc-class ':before' allow us insert content before the inside of a tag */
+h2:before {
+  counter-increment: h2idx;
+  /*
+   * \0000a0 is a non-breaking space in CSS, here we seperate each index using two such
+   * spaces.
+   */
+  content: counter(h1idx) "." counter(h2idx) ".\0000a0\0000a0";
+}
+h3:before {
+  counter-increment: h3idx;
+  content: counter(h1idx) "." counter(h2idx) "." counter(h3idx) ".\0000a0\0000a0";
+}
+h4:before {
+  counter-increment: h4idx;
+  content:counter(h1idx) "." counter(h2idx) "." counter(h3idx) "." counter(h4idx) ".\0000a0\0000a0";
+}
+h5:before {
+  counter-increment: h5idx;
+  content:counter(h1idx) "." counter(h2idx) "." counter(h3idx) "." counter(h4idx) "." counter(h5idx) ".\0000a0\0000a0";
+}
+h6:before {
+  counter-increment: h6idx;
+  content:counter(h1idx) "." counter(h2idx) "." counter(h3idx) "." counter(h4idx) "." counter(h5idx) "." counter(h6idx) ".\0000a0\0000a0";
+}
+
+/*
+ * headline style
+ */
+div#headtitle {
+  font-size: 2.25rem;
+}
+div#headinfo {
+  font-weight: normal;
+  opacity: 0.7;
+  font-size: 1.15rem;
+}
+div#lastupdate {
+    color: darkorange;
 }
