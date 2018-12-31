@@ -258,15 +258,26 @@ func renderList(btlines [][]byte) (string) {
 }
 
 func renderTitle(block []byte) string {
-    line := string(block)
-    level := 0
-    for idx, ch := range line {
-        if ch != '#' {
-            level = idx + 1
-            break
-        }
+    line := strings.TrimSpace(string(block))
+    // I do not know why strings.TrimPrefix does not work
+    // title := strings.TrimPrefix(line, "#")
+    title := strings.TrimLeft(line, "#")
+    level := len(line) - len(title)
+
+    // check corner case: '###' => no title
+    if len(title) == 0 {
+        fmt.Printf("[Warn] No title found!\n")
+        title = "[NO TITLE]"
     }
-    return fmt.Sprintf("<h%d>%s</h%d>", level, line[level:], level)
+
+    // The w3c specification says that The heading elements are H1, H2, H3, H4, H5, and H6
+    // with H1 being the highest (or most important) level and H6 the least.
+    // As result, if the title level is more than 6, then it shuold be six
+    if level > 6 {
+        fmt.Printf("[Warn] {%s} => Too many title levels, and will be reset to <h6></h6>!\n", line)
+        level = 6
+    }
+    return fmt.Sprintf("<h%d>%s</h%d>", level, title, level)
 }
 
 func renderCode(block []byte, outindent int) string {
