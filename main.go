@@ -498,7 +498,7 @@ func unpackResource(box packr.Box, unpack2dir string) {
 
 func isPiggerSite(sitedir string) bool {
     // fmt.Printf("Build all files ...\n")
-    // check if the current direcotry is a pigger project
+    // check if the current directory is a pigger project
     piggerconf := expandPath(filepath.Join(sitedir, "posts", "pigger.json"))
     if _, err := os.Stat(piggerconf); os.IsNotExist(err) {
         return false
@@ -680,6 +680,22 @@ func main() {
         sitedir := expandPath(flag.Arg(1))
         fmt.Printf("Create new site %s ...\n", sitedir)
         if _, err := os.Stat(sitedir); os.IsNotExist(err) {
+            // Create draft directory
+            os.MkdirAll(filepath.Join(sitedir, "draft"), os.ModePerm);
+
+            // Create home directory
+            os.MkdirAll(filepath.Join(sitedir, "home"), os.ModePerm);
+
+            // Create .gitignore file for draft in site directory
+            gitignore, err := os.Create(filepath.Join(sitedir, ".gitignore"))
+            defer gitignore.Close()
+            if err != nil {
+                fmt.Printf("Cannot create .gitignore file in %s!\n", sitedir)
+                log.Fatal(err)
+            } else {
+                gitignore.WriteString("./draft\n")
+            }
+
             // unpackResource will create the dir if it does not exist
             unpackResource(box, filepath.Join(sitedir, "posts", "pigger"))
             // create pigger configuration pigger.json
