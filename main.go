@@ -411,14 +411,16 @@ func renderFile(box packr.Box, infile string, outfile string) map[string] string
     }
     // set latest update date
     d := getCurrentDate()
-    headmeta["latest"] = d["year"] + "-" + d["month"] + "-" + d["day"]
+    // year-month-day
+    ymd := d["year"] + "-" + d["month"] + "-" + d["day"]
     // set default headline meta
     if len(headmeta) == 0 {
         fmt.Printf("[Warn] You do not supply any head meta information!\n")
         headmeta["title"] = filepath.Base(infile)
         headmeta["author"] = "Anonymous"
-        headmeta["date"]  = headmeta["latest"]
+        headmeta["date"]  = ymd
     }
+    headmeta["latest"] = ymd
 
     txt, _ := box.FindString("tpl/article.html")
     tpl, err := template.New("T").Parse(txt)
@@ -522,12 +524,13 @@ func getFileHash(path string) map[string]string {
 
 func hasUpdated(oldfile string, newfile string) bool {
     if _, err := os.Stat(oldfile); os.IsNotExist(err) {
-        fmt.Printf("Cannot find the file %s!", oldfile)
+        fmt.Printf("Cannot find the file %s!\n", oldfile)
         return false
     }
     if _, err := os.Stat(newfile); os.IsNotExist(err) {
-        fmt.Printf("Cannot find the file %s!", newfile)
-        return false
+        // fmt.Printf("Cannot find the file %s!\n", newfile)
+        // if no newfile is found, then the newfile should be regarded to be updated
+        return true
     }
     oldmd5 := getFileHash(oldfile)["md5"]
     newmd5 := getFileHash(newfile)["md5"]
