@@ -70,13 +70,11 @@ func renderLine(block []byte) (string){
                 remain := string(line[i + 1:])
                 // well, the fuck! idx is the byte index but not unicode!
                 idx := strings.IndexRune(remain, '`')
-                // fmt.Printf("idx = %d\n", idx)
                 if idx != -1 {
                     blk := string(remain[0: idx])
                     htmlline += `&nbsp;<code class="language-clike">` + html.EscapeString(blk) + "</code>&nbsp;"
                     // notice that we should calculate the number of unicode and accumulate
                     i += 1 + len([]rune(blk))
-                    // fmt.Printf("i = %d\n", i)
                 } else {
                     htmlline += html.EscapeString(string(line[i]))
                 }
@@ -187,26 +185,31 @@ func renderList(btlines [][]byte) (string) {
     stack := NewStack()
     listhtml := "<ul>"
     stack.Push("</ul>")
-    indent := 0
+    // indent level of the current list item (based 0)
+    level := 0
     firstitem := true
     for i := 0; i < len(btlines); i++ {
         line := strings.TrimRight(string(btlines[i]), " ")
-        // If there should a item, then it must be the first
-        wantidx := len(line) - len(strings.TrimLeft(line, " "))
+        // If there should an item, then string '-' must be the first non-blank character
+        space := len(line) - len(strings.TrimLeft(line, " "))
+        // The index of item indicator '- '
         idx := strings.Index(line, "- ")
         // if the idx is not found or the item indicator is not the first
-        if idx == -1 || line[wantidx:wantidx + 2] != "- " {
-            space := len(line) - len(strings.TrimLeft(line, " "))
-            if space >= 8 {
+        if idx == -1 || line[space:space + 2] != "- " {
+            // the least indent value for list-nested codes
+            codeindent := (level + 2) * 4
+            if space >= codeindent {
                 codeblk := make([]byte, 0, 64)
                 for j := i; j < len(btlines); j++ {
-                    space = len(btlines[j]) - len(bytes.TrimLeft(btlines[j], " "))
-                    if space >= 8 {
+                    spacenum := len(btlines[j]) - len(bytes.TrimLeft(btlines[j], " "))
+                    // gather code lines
+                    if spacenum >= codeindent {
                         codeblk = append(codeblk, btlines[j]...)
                         codeblk = append(codeblk, 0xa)
                     }
-                    if space < 8 || j == len(btlines) - 1 {
-                        tmp := renderCode(codeblk, 8)
+                    // render codes
+                    if spacenum < codeindent || j == len(btlines) - 1 {
+                        tmp := renderCode(codeblk, codeindent)
                         listhtml += tmp
                         if j == len(btlines) - 1 {
                             i = j
@@ -225,31 +228,39 @@ func renderList(btlines [][]byte) (string) {
                 line = line[0:len(line) - 1]
                 brk = "<br/>"
             }
-            if idx / 4 == indent {
-                if !firstitem {
+            // idx will be 4 * i for any i >= 0 (idx is counted from 0)
+            if idx / 4 == level {
+                // Case 1: Keep going on the current level
+                if firstitem {
+                    firstitem = false;
+                } else {
+                    // If the item in the same level and the item is not the global first one,
+                    // then there should be an end mark
                     listhtml += stack.Pop()
                     firstitem = false
                 }
                 listhtml += "<li>"
                 listhtml += renderLine([]byte(line[idx + 2:])) + brk
                 stack.Push("</li>")
-            } else if idx / 4 > indent {
+            } else if idx / 4 > level {
+                // Case 2: Nested level
                 listhtml += "<ul>"
                 stack.Push("</ul>")
                 listhtml += "<li>"
                 listhtml += renderLine([]byte(line[idx + 2:])) + brk
                 stack.Push("</li>")
-                indent = idx / 4
+                level = idx / 4
             } else {
-                for j := idx / 4; j < indent; j++ {
-                    listhtml += stack.Pop()
-                    listhtml += stack.Pop()
+                // Case 3: Go back up level
+                for j := idx / 4; j < level; j++ {
+                    listhtml += stack.Pop() // pop </li>
+                    listhtml += stack.Pop() // pop </ul>
                 }
-                listhtml += stack.Pop()
+                listhtml += stack.Pop()  // pop </li>
                 listhtml += "<li>"
                 listhtml += renderLine([]byte(line[idx + 2:])) + brk
                 stack.Push("</li>")
-                indent = idx / 4
+                level = idx / 4
             }
         }
     }
