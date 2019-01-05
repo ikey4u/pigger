@@ -1,6 +1,12 @@
+---
+
+A Chinese version could be found [here](./docs/README-CN.md).  中文版本在 [这里](./docs/README-CN.md).
+
+---
+
 # Pigger - A cross-platform static blog generator
 
-![](logo.png)
+![](./docs/logo.png)
 
 You may say `Wow, how ugly is the logo!` Well, I want to make a great logo, as well.
 
