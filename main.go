@@ -35,6 +35,7 @@ type postmeta struct {
     Date string
     Author string
     Link template.URL // disable backslash escaping
+    Latest string // the latest update date
 }
 
 func getHeadline(block []byte) (map[string]string) {
@@ -392,9 +393,9 @@ func getCurrentDate() map[string]string {
 }
 
 func renderFile(box packr.Box, infile string, outfile string) map[string] string {
+    headmeta := make(map[string]string)
     blocks := splitFile(infile)
     dochtml := ""
-    headmeta := make(map[string]string)
     for _, block := range blocks {
         // For each block, remove its prefix empty newline
         // I am pullzed by golang's Trim, TrimPrefix, TrimLeft ...
@@ -420,6 +421,15 @@ func renderFile(box packr.Box, infile string, outfile string) map[string] string
         }
         dochtml += rendered + "\n"
     }
+
+    // If the file has not been updated, then we return headmeta directly
+    if !hasUpdated(infile, outfile + ".txt") {
+        headmeta["latest"] = headmeta["latest"]
+        _, fname := path.Split(infile)
+        fmt.Printf("%s is remained unchanged, skipped!\n", fname)
+        return headmeta
+    }
+
     // set latest update date
     d := getCurrentDate()
     // year-month-day
@@ -609,11 +619,6 @@ func main() {
             infile := article
             outfile := filepath.Join(outdir, "index.html")
 
-            if !hasUpdated(infile, outfile + ".txt") {
-                fmt.Printf("%s is remained unchanged ... skipped!\n")
-                continue
-            }
-
             // set style
             pc.imgin_ = filepath.Dir(infile)
             pc.imgout_ = filepath.Join(outdir, "images")
@@ -641,7 +646,7 @@ func main() {
             // fmt.Printf("sitedir: %s\n", sitedir)
             // fmt.Printf("infile: %s outfile: %s\n", infile, outfile)
             // fmt.Printf("in: %s out: %s headmeta: %v\n", relin, relout, headmeta)
-            post[relin] = postmeta{Title: headmeta["title"], Date: headmeta["date"], Author: headmeta["author"], Link: template.URL(relout)}
+            post[relin] = postmeta{Title: headmeta["title"], Date: headmeta["date"], Author: headmeta["author"], Link: template.URL(relout), Latest: headmeta["latest"]}
         }
 
         // create site index file(not index.html in case that user want to have their own
@@ -762,26 +767,22 @@ func main() {
         outdir := filepath.Join(outbase, barename);os.Mkdir(outdir, os.ModePerm)
         outfile := filepath.Join(outdir, "index.html")
 
-        if hasUpdated(infile, outfile + ".txt") {
-            // unpack static resources
-            if cutoff {
-                if style == "" {
-                    pc.style = "../pigger"
-                    unpackResource(box, expandPath(filepath.Join(outdir, pc.style)))
-                } else {
-                    pc.style = style
-                }
+        // unpack static resources
+        if cutoff {
+            if style == "" {
+                pc.style = "../pigger"
+                unpackResource(box, expandPath(filepath.Join(outdir, pc.style)))
             } else {
-                unpackResource(box, outdir)
-                pc.style = "."
+                pc.style = style
             }
-            // render file
-            pc.imgout_ = filepath.Join(outdir, "images")
-            pc.imgin_ = filepath.Dir(infile)
-            renderFile(box, infile, outfile)
-            fmt.Printf("Save file into %s\n", outfile)
         } else {
-            fmt.Printf("%s is remained unchanged, skipped!\n", infile)
+            unpackResource(box, outdir)
+            pc.style = "."
         }
+        // render file
+        pc.imgout_ = filepath.Join(outdir, "images")
+        pc.imgin_ = filepath.Dir(infile)
+        renderFile(box, infile, outfile)
+        fmt.Printf("Save file into %s\n", outfile)
     }
 }
