@@ -712,7 +712,7 @@ func main() {
                 fmt.Printf("Cannot create .gitignore file in %s!\n", sitedir)
                 log.Fatal(err)
             } else {
-                gitignore.WriteString("./draft\n")
+                gitignore.WriteString("draft\n")
             }
 
             // unpackResource will create the dir if it does not exist
