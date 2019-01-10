@@ -37,8 +37,18 @@ Do not worry about `pigger` at all, if you want to try then you can, I promise.
 
 ## The easy way
 
-Just download from the project release page, unzip it and add the binary path into your
-environment.
+Just download binary from the project's [release](https://github.com/ikey4u/pigger/releases) page,
+and add the binary path into your environment.
+
+    P.S.(for novice)
+
+    - darwin → macos OS(operating system)
+    - windows → windows OS
+    - linux → linux OS
+
+    If your OS is 64-bits, download either amd64 or 386, if your OS is 32-bits, download the 386 version.
+    For example, if your os is windows x64, then you can download `pigger_windows_amd64-1.0.0.exe` or 
+    `pigger_windows_386-1.0.0.exe`.
 
 ## The hard way
 
@@ -51,7 +61,7 @@ following commands:
     go get -u github.com/gobuffalo/packr
     go get -u github.com/json-iterator/go
 
-Everything is got prepared!  You can run `make` then your are done.
+Everything is got prepared!  Clone the project and run `make` then your are done.
 One more thing, if you have installed [gox](https://github.com/mitchellh/gox),
 you can run `make release` to build binary for linux, mac and window platforms.
 
