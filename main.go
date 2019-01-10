@@ -351,6 +351,7 @@ func splitFile(infile string) [][]byte {
     blocks := bytes.Split(input[0:], []byte{0xa, 0xa})
     for i := 0; i < len(blocks); i++ {
         chunk := make([]byte, 0)
+        // fmt.Printf("[DEBUG] blocks[%d] =>\n[*]%s", i, string(blocks[i]))
         // merge CODE4 block
         if getBlockType(blocks[i]) == "CODE4" {
             j := i
@@ -533,7 +534,8 @@ func isPiggerSite(sitedir string) bool {
 func getFileHash(path string) map[string]string {
     data, err := ioutil.ReadFile(path)
     if err != nil {
-        log.Fatal("Cannot open file %s to calculate hash!", path)
+        fmt.Printf("Cannot open file %s to calculate hash!\n", path)
+        os.Exit(1)
     }
     hash := make(map[string]string)
     // From https://gist.github.com/sergiotapia/8263278
@@ -746,7 +748,8 @@ func main() {
     default:
         infile := expandPath(flag.Arg(0))
         // prepare input and output
-        _, fname := path.Split(infile)
+        infiledir, fname := filepath.Split(infile) // filepath for cross platform
+
         if path.Ext(fname) != ".txt" {
             fmt.Printf("Pigger only deals with text file (with a '.txt' suffix).\n")
             os.Exit(1)
@@ -756,15 +759,17 @@ func main() {
             log.Fatal("Input file is not exist!\n")
         }
         barename := strings.TrimSuffix(fname, path.Ext(fname))
+
         if outbase == "" {
-            outbase, _ = filepath.Abs(".")
+            // outbase, _ = filepath.Abs(".")
+            outbase = infiledir
         } else {
             outbase = expandPath(outbase)
         }
         if _, err := os.Stat(outbase); os.IsNotExist(err) {
             os.MkdirAll(outbase, os.ModePerm)
         }
-        outdir := filepath.Join(outbase, barename);os.Mkdir(outdir, os.ModePerm)
+        outdir := filepath.Join(outbase, barename); os.Mkdir(outdir, os.ModePerm)
         outfile := filepath.Join(outdir, "index.html")
 
         // unpack static resources
