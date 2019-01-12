@@ -189,46 +189,30 @@ func renderList(btlines [][]byte) (string) {
     // indent level of the current list item (based 0)
     level := 0
     firstitem := true
+    idx := 0 // The index of list indicator
     for i := 0; i < len(btlines); i++ {
         line := strings.TrimRight(string(btlines[i]), " ")
         // If there should an item, then string '-' must be the first non-blank character
         space := len(line) - len(strings.TrimLeft(line, " "))
-        // The index of item indicator '- '
-        idx := strings.Index(line, "- ")
-        // if the idx is not found or the item indicator is not the first
-        if idx == -1 || line[space:space + 2] != "- " {
-            // the least indent value for list-nested codes
-            codeindent := (level + 2) * 4
-            if space >= codeindent {
-                codeblk := make([]byte, 0, 64)
-                for j := i; j < len(btlines); j++ {
-                    spacenum := len(btlines[j]) - len(bytes.TrimLeft(btlines[j], " "))
-                    // gather code lines
-                    if spacenum >= codeindent {
-                        codeblk = append(codeblk, btlines[j]...)
-                        codeblk = append(codeblk, 0xa)
-                    }
-                    // render codes
-                    if spacenum < codeindent || j == len(btlines) - 1 {
-                        tmp := renderCode(codeblk, codeindent)
-                        listhtml += tmp
-                        if j == len(btlines) - 1 {
-                            i = j
-                        } else {
-                            i = j - 1
-                        }
-                        break
-                    }
+        if space % 4 == 0 && len(line) >= space + 2 && line[space:space + 2] == "- " {
+            idx = space
+
+            itemlines := make([]byte, 0, 64)
+            itemlines = append(itemlines, btlines[i][idx + 2:]...)
+
+            j := i + 1
+            for ; j < len(btlines); j++ {
+                lineindent := len(btlines[j]) - len(bytes.TrimLeft(btlines[j], " "))
+                if (lineindent == (idx / 4 + 1) * 4 ||
+                    lineindent == (idx / 4) * 4 + 2) &&
+                    string(btlines[j][lineindent:lineindent + 2]) != "- " {
+                    itemlines = append(itemlines, btlines[j]...)
+                } else {
+                    break
                 }
-            } else {
-                listhtml += renderLine(([]byte(line)))
             }
-        } else {
-            brk := ""
-            if line[len(line) - 1] == ':' {
-                line = line[0:len(line) - 1]
-                brk = "<br/>"
-            }
+            i = j - 1
+
             // idx will be 4 * i for any i >= 0 (idx is counted from 0)
             if idx / 4 == level {
                 // Case 1: Keep going on the current level
@@ -241,14 +225,14 @@ func renderList(btlines [][]byte) (string) {
                     firstitem = false
                 }
                 listhtml += "<li>"
-                listhtml += renderLine([]byte(line[idx + 2:])) + brk
+                listhtml += renderLine(itemlines)
                 stack.Push("</li>")
             } else if idx / 4 > level {
                 // Case 2: Nested level
                 listhtml += "<ul>"
                 stack.Push("</ul>")
                 listhtml += "<li>"
-                listhtml += renderLine([]byte(line[idx + 2:])) + brk
+                listhtml += renderLine(itemlines)
                 stack.Push("</li>")
                 level = idx / 4
             } else {
@@ -259,9 +243,53 @@ func renderList(btlines [][]byte) (string) {
                 }
                 listhtml += stack.Pop()  // pop </li>
                 listhtml += "<li>"
-                listhtml += renderLine([]byte(line[idx + 2:])) + brk
+                listhtml += renderLine(itemlines)
                 stack.Push("</li>")
                 level = idx / 4
+            }
+        } else {
+            // the least indent value for list-nested codes
+            codeindent := (level + 2) * 4
+            if space >= codeindent {
+                // fmt.Printf("[DBG] Gather codes ...\n")
+                codeblk := make([]byte, 0, 64)
+                j := i
+                for ; j < len(btlines); j++ {
+                    spacenum := len(btlines[j]) - len(bytes.TrimLeft(btlines[j], " "))
+                    // an empty line or a canonical code line
+                    if len(bytes.TrimLeft(btlines[j], " ")) == 0 || spacenum >= codeindent {
+                        codeblk = append(codeblk, btlines[j]...)
+                        codeblk = append(codeblk, 0xa)
+                    } else {
+                        break
+                    }
+                }
+                i = j - 1
+                tmp := renderCode(codeblk, codeindent)
+                listhtml += tmp
+            } else {
+                // fmt.Printf("[DBG] Gather list paragraph ...\n")
+                para := make([]byte, 0, 64)
+                align := len(btlines[i]) - len(bytes.TrimLeft(btlines[i], " "))
+                j := i
+                for ; j < len(btlines); j++ {
+                    nextalign := len(btlines[j]) - len(bytes.TrimLeft(btlines[j], " "))
+
+                    // Do not gather list item
+                    if len(btlines[j]) >= nextalign + 2 &&
+                            string(btlines[j][nextalign:nextalign + 2]) == "- " {
+                        break
+                    }
+
+                    if  nextalign == align {
+                        para = append(para, btlines[j]...)
+                        // fmt.Printf("[DBG] list paragraph: %s\n", string(btlines[j]))
+                    } else {
+                        break
+                    }
+                }
+                i = j - 1
+                listhtml += renderPara(([]byte(para)))
             }
         }
     }
@@ -295,6 +323,16 @@ func renderTitle(block []byte) string {
 
 func renderCode(block []byte, outindent int) string {
     btlines := bytes.Split(block, []byte{0xa})
+
+    // Remove tailing empty lines
+    lastValidLine := len(btlines) - 1
+    for ; lastValidLine >= 0; lastValidLine-- {
+        if len(bytes.TrimSpace(btlines[lastValidLine])) != 0 {
+            break
+        }
+    }
+    btlines = btlines[:lastValidLine + 1]
+
     idx := strings.Index(string(btlines[0]), "//:")
     highlights := "language-clike"
     if idx != -1 {
@@ -302,19 +340,17 @@ func renderCode(block []byte, outindent int) string {
     }
     code := fmt.Sprintf("<pre><code class=\"%s\">", highlights)
     for no, btline := range btlines {
+        cutfrom := outindent
         // skip highlight line
         if idx != -1 && no == 0 {
             continue
         }
-        // if the last line is empty, we skip it
-        if no == len(btlines) - 1 && len(bytes.TrimSpace(btline)) == 0 {
-            continue
-        }
-        space := len(btline) - len(bytes.TrimSpace(btline))
+
+        space := len(btline) - len(bytes.TrimLeft(btline, " "))
         if outindent > space {
-            outindent = 0
+            cutfrom = 0
         }
-        line := html.EscapeString(string(btline[outindent:]))
+        line := html.EscapeString(string(btline[cutfrom:]))
         code += line + "\n"
     }
     code += "</code></pre>"
@@ -332,11 +368,7 @@ func getBlockType(block []byte) string {
     } else if len(flag) >= 2 && flag[0:2] == "- " {
         return "LIST"
     } else if len(flag) >= 4 && flag[0:4] == "    " {
-        if len(flag) >= 8 && flag[0:8] == "        " {
-            return "CODE8"
-        } else {
-            return "CODE4"
-        }
+        return "INDENT"
     } else {
         return "PARA"
     }
@@ -348,35 +380,35 @@ func splitFile(infile string) [][]byte {
         log.Fatal("Cannot read input file!")
     }
     chunks := make([][]byte, 0)
+    // basic block is seperated by a blank newline
     blocks := bytes.Split(input[0:], []byte{0xa, 0xa})
     for i := 0; i < len(blocks); i++ {
-        chunk := make([]byte, 0)
-        // fmt.Printf("[DEBUG] blocks[%d] =>\n[*]%s", i, string(blocks[i]))
-        // merge CODE4 block
-        if getBlockType(blocks[i]) == "CODE4" {
-            j := i
-            for ; j < len(blocks) && strings.HasPrefix(getBlockType(blocks[j]), "CODE"); j++ {
-                chunk = append(chunk, 0xa)
-                chunk = append(chunk, blocks[j]...)
-                // well, it is really tricky
-                chunk = append(chunk, "\n    "...)
-            }
-            i = j - 1
-        // merge CODE8 block
-        } else if getBlockType(blocks[i]) == "LIST" {
-            chunk = append(chunk, blocks[i]...)
-            j := i + 1
-            for ; j < len(blocks) && strings.HasPrefix(getBlockType(blocks[j]), "CODE"); j++ {
-                chunk = append(chunk, 0xa)
-                chunk = append(chunk, "        \n"...)
-                chunk = append(chunk, blocks[j]...)
-            }
-            i = j - 1
-        } else {
-            chunk = append(chunk, 0xa)
-            chunk = append(chunk, blocks[i]...)
+
+        // ignore empty line
+        if len(bytes.TrimSpace(blocks[i])) == 0 {
+            continue
         }
-        chunks = append(chunks, chunk)
+
+        chunk := make([]byte, 0)
+        blktype := getBlockType(blocks[i])
+        if blktype == "INDENT" || blktype == "LIST" {
+            for true {
+                chunk = append(chunk, blocks[i]...)
+                chunk = append(chunk, 0xa) // Add the missing newline character to block
+                chunk = append(chunk, 0xa) // Add a blank line between two block
+                if i + 1 < len(blocks) && getBlockType(blocks[i + 1]) == "INDENT" {
+                    i += 1
+                } else {
+                    // append a basic block
+                    chunks = append(chunks, chunk)
+                    break
+                }
+            }
+        } else {
+            chunk = append(chunk, blocks[i]...)
+            chunk = append(chunk, 0xa)
+            chunks = append(chunks, chunk)
+        }
     }
     return chunks
 }
@@ -413,10 +445,8 @@ func renderFile(box packr.Box, infile string, outfile string) map[string] string
             headmeta = getHeadline(block)
         case "LIST":
             rendered = renderList(bytes.Split(block, []byte{0xa}))
-        case "CODE4":
+        case "INDENT":
             rendered = renderCode(block, 4)
-        case "CODE8":
-            rendered = renderCode(block, 8)
         default:
             rendered = renderPara(block)
         }
@@ -648,7 +678,11 @@ func main() {
             // fmt.Printf("sitedir: %s\n", sitedir)
             // fmt.Printf("infile: %s outfile: %s\n", infile, outfile)
             // fmt.Printf("in: %s out: %s headmeta: %v\n", relin, relout, headmeta)
-            post[relin] = postmeta{Title: headmeta["title"], Date: headmeta["date"], Author: headmeta["author"], Link: template.URL(relout), Latest: headmeta["latest"]}
+            post[relin] = postmeta{Title: headmeta["title"],
+                Date: headmeta["date"],
+                Author: headmeta["author"],
+                Link: template.URL(relout),
+                Latest: headmeta["latest"]}
         }
 
         // create site index file(not index.html in case that user want to have their own
