@@ -605,6 +605,9 @@ func main() {
     var style string
     flag.StringVar(&style, "style", "", "(optional) Specify a remote style root directory.")
     help := flag.Bool("h", false, "(optional) Show this help.")
+    verstr := flag.Bool("v", false, "(optional) Show pigger version.")
+    vernum := flag.Bool("V", false, "(optional) Show pigger version number.")
+
     flag.Usage = func() {
         fmt.Printf("Usage: %s [[OPTIONS] <infile>]|[ACTIONS PARAMS]\nOPTIONS:\n", os.Args[0])
         flag.PrintDefaults()
@@ -615,11 +618,26 @@ func main() {
         fmt.Printf("         style: update embedded style files such as css, js etc.\n")
     }
     flag.Parse()
+
     // check cmd args
+    piggerVersion := "v1.0.3"
+
+    if *verstr {
+        fmt.Printf("Hi, my god! Pigger %s is serving you!\n", piggerVersion)
+        os.Exit(0)
+    }
+
+    if *vernum {
+        fmt.Println(piggerVersion)
+        os.Exit(0)
+    }
+
     if *help || flag.NArg() == 0 {
         flag.Usage()
         os.Exit(0)
     }
+
+
     switch flag.Arg(0) {
     case "build":
         sitedir := expandPath(".")
