@@ -6,9 +6,10 @@
 
 根据自己的平台选择下载如下软件
 
-- windows → [pigmgr_windows_386](https://github.com/ikey4u/pigger/releases/download/v1.0.4/pigmgr_windows_386)
-- mac → [pigmgr_darwin_amd64](https://github.com/ikey4u/pigger/releases/download/v1.0.4/pigmgr_darwin_amd64) 
-- linux → [pigmgr_linux_386](https://github.com/ikey4u/pigger/releases/download/v1.0.4/pigmgr_linux_386) 
+- windows → [pigmgr_windows_386](https://github.com/ikey4u/pigger/releases/download/v1.0.4/pigmgr_windows_386.exe)
+- mac → [pigmgr_darwin_amd64](https://github.com/ikey4u/pigger/releases/download/v1.0.4/pigmgr_darwin_amd64)
+- linux → [pigmgr_linux_386](https://github.com/ikey4u/pigger/releases/download/v1.0.4/pigmgr_linux_386)
+
 
 下载后命令行执行即可完成安装.
 
