@@ -22,6 +22,8 @@ import (
     "github.com/json-iterator/go"
 )
 
+const VERSION string = "1.0.4"
+
 type pigconf struct {
     style string
     // private variables
@@ -628,17 +630,15 @@ func main() {
     flag.Parse()
 
     // check cmd args
-    piggerVersion := "1.0.3"
-
     if *verstr {
-        fmt.Printf("Hi, my god! Pigger %s is serving you!\n", piggerVersion)
+        fmt.Printf("Hi, my god! Pigger %s is serving you!\n", VERSION)
         fmt.Printf("%s\n", "If you have any question, do not hesitate to issue on https://github.com/ikey4u/pigger/issues !")
         os.Exit(0)
     }
 
     if *vernum {
         // No newline for easy pigmgr parsing
-        fmt.Printf("%s", piggerVersion)
+        fmt.Printf("%s", VERSION)
         os.Exit(0)
     }
 
