@@ -1,5 +1,29 @@
 #! /bin/bash
 action=$1
+
+function compile_pigger() {
+    read -p "Version number for pigger: " piggerver
+    echo "${piggerver}" > LATEST
+    echo "[+] Install pigger to local ..."
+    packr
+    go install
+    echo "[+] Cross compile pigger for linux, windows and mac ..."
+    gox -output="release/pigger_{{.OS}}_{{.Arch}}" -os="linux windows darwin" -arch="amd64 386"
+    packr clean
+    echo "Compile pigger is done!"
+}
+
+function compile_pigmgr() {
+    cd pigmgr
+    read -p "Version number for pigmgr: " pigmgrver
+    echo "${pigmgrver}" > LATEST
+    echo "[+] Install pigmgr to local ..."
+    go install
+    echo "[+] Cross compile pigmgr for linux, windows and mac ..."
+    gox -output="../release/pigmgr_{{.OS}}_{{.Arch}}" -os="linux windows darwin" -arch="amd64 386"
+    echo "Compile pigmgr is done!"
+}
+
 case $action in
     dev)
         echo "[+] Install pigger to local ..."
@@ -12,27 +36,16 @@ case $action in
         echo "All is done!"
         ;;
     pigger)
-        read -p "Version number for pigger: " piggerver
-        echo "${piggerver}" > LATEST
-        echo "[+] Install pigger to local ..."
-        packr
-        go install
-        echo "[+] Cross compile pigger for linux, windows and mac ..."
-        gox -output="release/pigger_{{.OS}}_{{.Arch}}" -os="linux windows darwin" -arch="amd64 386"
-        packr clean
-        echo "Compile pigger is done!"
+        compile_pigger
         ;;
     pigmgr)
-        cd pigmgr
-        read -p "Version number for pigmgr: " pigmgrver
-        echo "${pigmgrver}" > LATEST
-        echo "[+] Install pigmgr to local ..."
-        go install
-        echo "[+] Cross compile pigmgr for linux, windows and mac ..."
-        gox -output="../release/pigmgr_{{.OS}}_{{.Arch}}" -os="linux windows darwin" -arch="amd64 386"
-        echo "Compile pigmgr is done!"
+        compile_pigmgr
+        ;;
+    all)
+        compile_pigger
+        compile_pigmgr
         ;;
     *)
-        echo "Usage: $0 {dev|pigger|pigmgr}"
+        echo "Usage: $0 {dev|pigger|pigmgr|all}"
         exit 1
 esac
