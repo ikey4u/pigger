@@ -9,7 +9,6 @@
 *.xdv
 *.ipynb_checkpoints
 *.pyc
-build
 main
 test/test.html
 test/out
