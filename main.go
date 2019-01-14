@@ -41,8 +41,16 @@ type postmeta struct {
 func getHeadline(block []byte) (map[string]string) {
     headline := make(map[string]string)
     lines := bytes.Split(block, []byte{0xa})
-    if string(lines[0]) != "---" || string(lines[len(lines) - 1]) != "---" {
-        log.Fatal("Wrong meta format!\n")
+    if len(lines) < 5 || string(lines[0]) != "---" || string(lines[len(lines) - 1]) != "---" {
+        fmt.Printf("A right head meta should looks like:\n")
+        fmt.Println(`
+                    ---
+                    Title: The tile
+                    Date: The date looks like 2018-11-14
+                    Author: The author
+                    ---
+                    `)
+        log.Fatal("Please fix the head meta!\n")
     }
     // Remove the first and last "---" from headline,
     // you know that the slice in go is really silly, it should not support negative index!
