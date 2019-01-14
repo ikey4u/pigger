@@ -628,15 +628,17 @@ func main() {
     flag.Parse()
 
     // check cmd args
-    piggerVersion := "v1.0.3"
+    piggerVersion := "1.0.3"
 
     if *verstr {
         fmt.Printf("Hi, my god! Pigger %s is serving you!\n", piggerVersion)
+        fmt.Printf("%s\n", "If you have any question, do not hesitate to issue on https://github.com/ikey4u/pigger/issues !")
         os.Exit(0)
     }
 
     if *vernum {
-        fmt.Println(piggerVersion)
+        // No newline for easy pigmgr parsing
+        fmt.Printf("%s", piggerVersion)
         os.Exit(0)
     }
 
