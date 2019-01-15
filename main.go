@@ -94,7 +94,7 @@ func renderLine(block []byte) (string){
                     remain := string(line[i+1:])
                     idx := strings.IndexRune(remain, ']')
                     // find ']' and there is at least one character in '[]'
-                    if idx != -1 && idx > 1{
+                    if idx != -1 && idx > 1 {
                         blk := strings.TrimSpace(string(remain[1:idx]))
                         // lambda function to check if the link is an image
                         isimg := func(link string) bool {
@@ -204,6 +204,7 @@ func renderList(btlines [][]byte) (string) {
         line := strings.TrimRight(string(btlines[i]), " ")
         // If there should an item, then string '-' must be the first non-blank character
         space := len(line) - len(strings.TrimLeft(line, " "))
+        // if is a list item
         if space % 4 == 0 && len(line) >= space + 2 && line[space:space + 2] == "- " {
             idx = space
 
@@ -280,22 +281,26 @@ func renderList(btlines [][]byte) (string) {
             } else {
                 // fmt.Printf("[DBG] Gather list paragraph ...\n")
                 para := make([]byte, 0, 64)
-                align := len(btlines[i]) - len(bytes.TrimLeft(btlines[i], " "))
+                align := (level + 1) * 4
                 j := i
                 for ; j < len(btlines); j++ {
-                    nextalign := len(btlines[j]) - len(bytes.TrimLeft(btlines[j], " "))
-
                     // Do not gather list item
-                    if len(btlines[j]) >= nextalign + 2 &&
-                            string(btlines[j][nextalign:nextalign + 2]) == "- " {
+                    if len(btlines[j]) >= align + 2 &&
+                            string(btlines[j][align:align + 2]) == "- " {
                         break
                     }
-
-                    if  nextalign == align {
+                    // item content line should at least has (level + 1) * 4 prefix spaces
+                    nextalign := len(btlines[j]) - len(bytes.TrimLeft(btlines[j], " "))
+                    if  nextalign >= align {
                         para = append(para, btlines[j]...)
                         // fmt.Printf("[DBG] list paragraph: %s\n", string(btlines[j]))
                     } else {
-                        break
+                        // see unit test 08.txt
+                        if nextalign % 4 != 0 {
+                            log.Fatalf("[ERROR] Wrong indentation! => %s", string(btlines[j]))
+                        } else {
+                            break
+                        }
                     }
                 }
                 i = j - 1
