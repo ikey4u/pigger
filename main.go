@@ -389,9 +389,22 @@ func splitFile(infile string) [][]byte {
     if err != nil {
         log.Fatal("Cannot read input file!")
     }
+
+    fineinput := make([]byte, 0)
+    lines := bytes.Split(input[0:], []byte{0xa})
+    for idx, line := range lines {
+        if(len(bytes.TrimSpace(line)) != 0) {
+            fineinput = append(fineinput, line...)
+        }
+        // Do not add newline to last line
+        if idx < len(lines) - 1 {
+            fineinput = append(fineinput, 0xa)
+        }
+    }
+
     chunks := make([][]byte, 0)
     // basic block is seperated by a blank newline
-    blocks := bytes.Split(input[0:], []byte{0xa, 0xa})
+    blocks := bytes.Split(fineinput[0:], []byte{0xa, 0xa})
     for i := 0; i < len(blocks); i++ {
 
         // ignore empty line
