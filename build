@@ -1,9 +1,16 @@
 #! /bin/bash
 action=$1
 
+function setversion() {
+    info="$1"
+    codefile=$2
+    read -p "$info" version
+    echo "${version}" > LATEST
+    sed -i "/const VERSION/c\const VERSION = \"$version\"" "$codefile"
+}
+
 function compile_pigger() {
-    read -p "Version number for pigger: " piggerver
-    echo "${piggerver}" > LATEST
+    setversion "Version number for pigger: " main.go
     echo "[+] Install pigger to local ..."
     packr
     go install
@@ -15,8 +22,7 @@ function compile_pigger() {
 
 function compile_pigmgr() {
     cd pigmgr
-    read -p "Version number for pigmgr: " pigmgrver
-    echo "${pigmgrver}" > LATEST
+    setversion "Version number for pigmgr: " main.go
     echo "[+] Install pigmgr to local ..."
     go install
     echo "[+] Cross compile pigmgr for linux, windows and mac ..."
