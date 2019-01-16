@@ -22,7 +22,7 @@ import (
     "github.com/json-iterator/go"
 )
 
-const VERSION = "1.0.5"
+const VERSION = "1.0.6"
 
 type pigconf struct {
     style string
