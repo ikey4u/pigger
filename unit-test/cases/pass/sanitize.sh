@@ -4,7 +4,7 @@ for i in *
 do
     if [[ -d $i ]]
     then
-        cd $i && rm -rf css js tpl index.html.txt
+        cd $i && rm -rf css js tpl index.html.txt images
         cd ..
     fi
 done
