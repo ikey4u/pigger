@@ -149,7 +149,12 @@ func renderPara(block []byte) (string) {
     lines := bytes.Split(block, []byte{0xa})
     para := "<p>"
     for _, line := range lines {
-        para += renderLine(line)
+        space := len(line) - len(bytes.TrimSpace(line))
+        if space >= 4 {
+            para += renderCode(line, 4)
+        } else {
+            para += renderLine(line)
+        }
     }
     return para + "</p>"
 }
@@ -214,14 +219,19 @@ func renderList(btlines [][]byte) (string) {
         space := len(line) - len(strings.TrimLeft(line, " "))
         // if is a list item
         if space % 4 == 0 && len(line) >= space + 2 && line[space:space + 2] == "- " {
+            // log.Printf("item:%s\n", btlines[i])
             itemlines := make([]byte, 0, 64)
             itemlines = append(itemlines, btlines[i][space + 2:]...)
 
             wantalign := space + 4
             j := i + 1
             for ; j < len(btlines); j++ {
+                // if the first follwoing lien is empty, then the item line ends
+                if len(bytes.TrimSpace(btlines[i + 1])) == 0 {
+                    break
+                }
+                // gather item lines
                 lineindent := len(btlines[j]) - len(bytes.TrimLeft(btlines[j], " "))
-
                 if lineindent == wantalign && (!isItemLine(btlines[j])) {
                     itemlines = append(itemlines, btlines[j]...)
                 } else {
@@ -265,9 +275,14 @@ func renderList(btlines [][]byte) (string) {
                 level = space / 4
             }
         } else {
+            // we ignore the empty line(this lines is used to seperate basic block)
+            if len(bytes.TrimSpace(btlines[i])) == 0 {
+                continue
+            }
+
             // if the last item line has only one line, then the following lines
             // beglong to the second last level, here we update the level
-            if space < (level + 1) * 4 {
+            if 4 <= space && space < (level + 1) * 4 {
                 for j := space / 4 - 1; j < level; j++ {
                     listhtml += stack.Pop()
                     listhtml += stack.Pop()
@@ -275,6 +290,7 @@ func renderList(btlines [][]byte) (string) {
                 level = space / 4 - 1
             }
 
+            // for current item level, the line must has at least (level + 1) * 4 spaces
             if space < (level + 1) * 4 {
                 log.Fatalf("List content line has wrong indentation => %s\n", string(btlines[i]))
             }
