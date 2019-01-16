@@ -1,0 +1,31 @@
+- exec vs call
+
+    exec 将一个字符串当做命令执行, 而 call 则是调用一个函数.
+
+- 替换语法
+
+        :[range]s/from/to/[flags]
+
+    注意需要转义的字符
+
+        *./\[]&
+
+- 窗口大小调整
+
+    以下 res 代表 resize
+    - `:res +10` 水平方向增加10行
+            hello world
+        good boy
+    - `:vertical res +10` 垂直方向增加10行
+
+        good boy
+            hello world
+        good girl
+
+- 检查 python3, pip3, python3-config, python3 主目录
+
+    命令行运行下面的命令检测是否能执行
+
+        pip3 --version
+        python3 -c "import sys; print(sys.executable)"
+        python3-config --prefix

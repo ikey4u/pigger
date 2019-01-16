@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+  <meta charset="UTF-8">
+  <title>09.txt</title>
+  <link href="./css/prism.css" rel="stylesheet" />
+  <link href="./css/normalize.css" rel="stylesheet" />
+  <link href="./css/pigger.css" rel="stylesheet" />
+  </head>
+  <body>
+  <div style="padding:1% 5% 1% 5%">
+    <section style="padding-top: 20px; padding-bottom: 5px; color: #fff; text-align: center; background-image: linear-gradient(120deg, #224a73, #0d4027);">
+    </section>
+    <ul><li>exec vs call<p>    exec 将一个字符串当做命令执行, 而 call 则是调用一个函数.</p></li></ul>
+<ul><li>替换语法<pre><code class="language-clike">:[range]s/from/to/[flags]
+</code></pre><p>    注意需要转义的字符</p><pre><code class="language-clike">*./\[]&amp;
+</code></pre></li></ul>
+<ul><li>窗口大小调整<p>    以下 res 代表 resize</p><ul><li>&nbsp;<code class="language-clike">:res +10</code>&nbsp; 水平方向增加10行<pre><code class="language-clike">hello world
+</code></pre><p>        good boy</p></li><li>&nbsp;<code class="language-clike">:vertical res +10</code>&nbsp; 垂直方向增加10行<p>        good boy</p><pre><code class="language-clike">hello world
+</code></pre><p>        good girl</p></li></ul></li></ul>
+<ul><li>检查 python3, pip3, python3-config, python3 主目录<p>    命令行运行下面的命令检测是否能执行</p><pre><code class="language-clike">pip3 --version
+python3 -c &#34;import sys; print(sys.executable)&#34;
+python3-config --prefix
+</code></pre></li></ul>
+
+    <script src="./js/prism.js"></script>
+  </div>
+  </body>
+</html>
+

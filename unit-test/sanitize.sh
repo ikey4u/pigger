@@ -9,6 +9,12 @@ function sanitize() {
         then
             echo "[+] Sanitize $i ..."
             rm -rf $i/css $i/js $i/tpl $i/index.html.txt $i/images
+            if [[ -e $i/index.html ]]
+            then
+                sed -i '/headtitle/d' $i/index.html
+                sed -i '/headinfo/d' $i/index.html
+                sed -i '/lastupdate/d' $i/index.html
+            fi
         fi
     done
 }
@@ -21,5 +27,5 @@ case "$dir" in
         sanitize edge
         ;;
     *)
-        echo "Usage: $0 {cases|pass}"
+        echo "Usage: $0 {cases|edge}"
 esac

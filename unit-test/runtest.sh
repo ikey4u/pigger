@@ -20,6 +20,9 @@ function test_cases() {
     do
         if [[ -e "pass/$f" ]]
         then
+            sed -i '/headtitle/d' $f/index.html
+            sed -i '/headinfo/d' $f/index.html
+            sed -i '/lastupdate/d' $f/index.html
             cursum=$(gmd5sum $f/index.html | cut -f1 -d' ')
             oksum=$(gmd5sum pass/$f/index.html | cut -f1 -d' ')
             if [[ $cursum == $oksum ]]
