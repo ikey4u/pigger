@@ -192,6 +192,15 @@ func (s *Stack) Print() {
     }
 }
 
+func isItemLine(line []byte) bool {
+    indent := len(line) - len(bytes.TrimLeft(line, " "))
+    if indent % 4 == 0 && len(line) >= indent + 2 && string(line[indent:indent + 2]) == "- " {
+        return true
+    } else {
+        return false
+    }
+}
+
 func renderList(btlines [][]byte) (string) {
     stack := NewStack()
     listhtml := "<ul>"
@@ -199,24 +208,21 @@ func renderList(btlines [][]byte) (string) {
     // indent level of the current list item (based 0)
     level := 0
     firstitem := true
-    idx := 0 // The index of list indicator
     for i := 0; i < len(btlines); i++ {
         line := strings.TrimRight(string(btlines[i]), " ")
         // If there should an item, then string '-' must be the first non-blank character
         space := len(line) - len(strings.TrimLeft(line, " "))
         // if is a list item
         if space % 4 == 0 && len(line) >= space + 2 && line[space:space + 2] == "- " {
-            idx = space
-
             itemlines := make([]byte, 0, 64)
-            itemlines = append(itemlines, btlines[i][idx + 2:]...)
+            itemlines = append(itemlines, btlines[i][space + 2:]...)
 
+            wantalign := space + 4
             j := i + 1
             for ; j < len(btlines); j++ {
                 lineindent := len(btlines[j]) - len(bytes.TrimLeft(btlines[j], " "))
-                if (lineindent == (idx / 4 + 1) * 4 ||
-                    lineindent == (idx / 4) * 4 + 2) &&
-                    string(btlines[j][lineindent:lineindent + 2]) != "- " {
+
+                if lineindent == wantalign && (!isItemLine(btlines[j])) {
                     itemlines = append(itemlines, btlines[j]...)
                 } else {
                     break
@@ -224,8 +230,8 @@ func renderList(btlines [][]byte) (string) {
             }
             i = j - 1
 
-            // idx will be 4 * i for any i >= 0 (idx is counted from 0)
-            if idx / 4 == level {
+            // level will be 4 * i for any i >= 0 (level is counted from 0)
+            if space / 4 == level {
                 // Case 1: Keep going on the current level
                 if firstitem {
                     firstitem = false;
@@ -238,17 +244,17 @@ func renderList(btlines [][]byte) (string) {
                 listhtml += "<li>"
                 listhtml += renderLine(itemlines)
                 stack.Push("</li>")
-            } else if idx / 4 > level {
+            } else if space / 4 > level {
                 // Case 2: Nested level
                 listhtml += "<ul>"
                 stack.Push("</ul>")
                 listhtml += "<li>"
                 listhtml += renderLine(itemlines)
                 stack.Push("</li>")
-                level = idx / 4
+                level = space / 4
             } else {
                 // Case 3: Go back up level
-                for j := idx / 4; j < level; j++ {
+                for j := space / 4; j < level; j++ {
                     listhtml += stack.Pop() // pop </li>
                     listhtml += stack.Pop() // pop </ul>
                 }
@@ -256,13 +262,26 @@ func renderList(btlines [][]byte) (string) {
                 listhtml += "<li>"
                 listhtml += renderLine(itemlines)
                 stack.Push("</li>")
-                level = idx / 4
+                level = space / 4
             }
         } else {
+            // if the last item line has only one line, then the following lines
+            // beglong to the second last level, here we update the level
+            if space < (level + 1) * 4 {
+                for j := space / 4 - 1; j < level; j++ {
+                    listhtml += stack.Pop()
+                    listhtml += stack.Pop()
+                }
+                level = space / 4 - 1
+            }
+
+            if space < (level + 1) * 4 {
+                log.Fatalf("List content line has wrong indentation => %s\n", string(btlines[i]))
+            }
+
             // the least indent value for list-nested codes
             codeindent := (level + 2) * 4
             if space >= codeindent {
-                // fmt.Printf("[DBG] Gather codes ...\n")
                 codeblk := make([]byte, 0, 64)
                 j := i
                 for ; j < len(btlines); j++ {
@@ -279,7 +298,6 @@ func renderList(btlines [][]byte) (string) {
                 tmp := renderCode(codeblk, codeindent)
                 listhtml += tmp
             } else {
-                // fmt.Printf("[DBG] Gather list paragraph ...\n")
                 para := make([]byte, 0, 64)
                 align := (level + 1) * 4
                 j := i
@@ -291,12 +309,11 @@ func renderList(btlines [][]byte) (string) {
                     }
                     // item content line should at least has (level + 1) * 4 prefix spaces
                     nextalign := len(btlines[j]) - len(bytes.TrimLeft(btlines[j], " "))
-                    if  nextalign >= align {
+                    if  align <= nextalign && nextalign < (level + 2) * 4 {
                         para = append(para, btlines[j]...)
-                        // fmt.Printf("[DBG] list paragraph: %s\n", string(btlines[j]))
                     } else {
                         // see unit test 08.txt
-                        if nextalign % 4 != 0 {
+                        if align > nextalign && nextalign % 4 != 0 {
                             log.Fatalf("[ERROR] Wrong indentation! => %s", string(btlines[j]))
                         } else {
                             break
@@ -623,6 +640,7 @@ func hasUpdated(oldfile string, newfile string) bool {
 }
 
 func main() {
+    log.SetFlags(log.Lshortfile | log.LstdFlags) // Add file and line number to log info
     // pack static resources
     box := packr.NewBox("./etc")
     // set cmd argument options
