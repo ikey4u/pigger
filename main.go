@@ -149,12 +149,7 @@ func renderPara(block []byte) (string) {
     lines := bytes.Split(block, []byte{0xa})
     para := "<p>"
     for _, line := range lines {
-        space := len(line) - len(bytes.TrimSpace(line))
-        if space >= 4 {
-            para += renderCode(line, 4)
-        } else {
-            para += renderLine(line)
-        }
+        para += renderLine(line)
     }
     return para + "</p>"
 }

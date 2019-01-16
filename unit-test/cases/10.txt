@@ -1,4 +1,4 @@
-# bug
+# 段落渲染
 
-这是一个段落,下面的代码不会高亮
-    a code segment ....
+This is a paragraph
+    This line should not be highlight
