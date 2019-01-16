@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+  <meta charset="UTF-8">
+  <title>code preview with blank line</title>
+  <link href="./css/prism.css" rel="stylesheet" />
+  <link href="./css/normalize.css" rel="stylesheet" />
+  <link href="./css/pigger.css" rel="stylesheet" />
+  </head>
+  <body>
+  <div style="padding:1% 5% 1% 5%">
+    <section style="padding-top: 20px; padding-bottom: 5px; color: #fff; text-align: center; background-image: linear-gradient(120deg, #224a73, #0d4027);">
+      <div id = "headtitle"> code preview with blank line </div>
+      <div id = "headinfo"> by bugnofree </div>
+      <div id = "lastupdate"> Publish → 2018-11-28 Update → 2019-01-16</div>
+    </section>
+    
+<h1> what the fuck</h1>
+<pre><code class="language-c">#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+
+int main(int argc, char **argv)
+{
+    char str[1024];
+
+    strcpy(str, argv[1]);
+    printf(&#34;%s\n&#34;, str);
+    return 0;
+}
+</code></pre>
+<h1> 独立代码段测试</h1>
+<pre><code class="language-clike">package main
+
+import (
+   &#34;crypto/md5&#34;
+   &#34;encoding/hex&#34;
+   &#34;fmt&#34;
+   &#34;math/rand&#34;
+   &#34;time&#34;
+   &#34;os&#34;
+)
+
+func MD5(text string) string {
+   ctx := md5.New()
+   ctx.Write([]byte(text))
+   return hex.EncodeToString(ctx.Sum(nil))
+}
+
+func GetRandomString(k int) string {
+   str := &#34;0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ&#34;
+   bytes := []byte(str)
+   result := []byte{}
+   r := rand.New(rand.NewSource(time.Now().UnixNano()))
+   for i := 0; i &lt; k; i++ {
+      result = append(result, bytes[r.Intn(len(bytes))])
+   }
+   return string(result)
+}
+
+func brute(salt, submd5 string, cmpsz int) string {
+    for {
+        s := GetRandomString(cmpsz)
+        if MD5(s + salt)[:4] == submd5 {
+            return s;
+        }
+    }
+}
+</code></pre>
+<h1> 列表代码段测试</h1>
+<ul><li>这是一段列表代码<pre><code class="language-clike">func main() {
+    key := brute(os.Args[1], os.Args[2], 5)
+
+    fmt.Printf(&#34;Key is %s\n&#34;, key)
+}
+</code></pre></li></ul>
+
+    <script src="./js/prism.js"></script>
+  </div>
+  </body>
+</html>
+

@@ -1,0 +1,89 @@
+---
+title: vue notes
+date: 2018-11-25
+author: bugnofree
+---
+
+# 笔记测试
+
+# vue-cli 安装
+
+安装
+
+    npm install -g vue-cli
+
+切换源
+
+    npm install -g nrm
+    nrm use taobao
+
+# vue 项目
+
+## 使用 vue-cli 创建项目
+
+- 使用命令 `vue list` 可以查看官方支持的模板:
+    一共支持如下四种模板
+        Available official templates:
+        ★  browserify - A full-featured Browserify + vueify setup with hot-reload, linting & unit testing.
+        ★  browserify-simple - A simple Browserify + vueify setup for quick prototyping.
+        ★  pwa - PWA template for vue-cli based on the webpack template
+        ★  simple - The simplest possible Vue setup in a single HTML file
+        ★  webpack - A full-featured Webpack + vue-loader setup with hot reload, linting, testing & css extraction.
+        ★  webpack-simple - A simple Webpack + vue-loader setup for quick prototyping.
+
+- 从模板建立 vue 项目:
+    命令为 `vue init <template name>`, 其中 <template name> 为模板名称, 比如
+        vue init webpack vuedemo
+    以模板 `webpack` 为基础建立一个 vue 项目, 项目根目录为当前目录下的 vuedemo 目录.
+    在生成项目时, 会询问各种选项, 选择默认即可. 比如
+        ➜  vue init webpack vuedemo  // 建立一个 vuedemo 项目
+        ? Project name vuedemo
+        ? Project description A Vue.js project
+        ? Author bugnofree <pwnkeeper@gmail.com>
+        ? Vue build standalone
+        ? Install vue-router? Yes
+        ? Use ESLint to lint your code? Yes
+        ? Pick an ESLint preset Standard
+        ? Set up unit tests Yes
+        ? Pick a test runner jest
+        ? Setup e2e tests with Nightwatch? Yes
+        ? Should we run `npm install` for you after the project has been created? (recommended) npm
+- cd vuedemon && npm install
+    安装依赖, 一般地会遇到安装 chromedriver 失败, 因为 gfw 原因, 进入 sell 目录单独安装如下:
+        npm install chromedriver --chromedriver_cdnurl=http://cdn.npm.taobao.org/dist/chromedriver
+- npm run dev
+    运行测试, 在浏览器中打开指定网址, 出现 vue 界面即可.
+
+## vue demo 项目结构
+
+    //: javascript
+    ➜  vuedemo tree -L 2 -I node_modules
+    .
+    ├── README.md
+    ├── build
+    │   ├── build.js              // webpack 打包配置
+    │   ├── check-versions.js
+    │   ├── logo.png
+    │   ├── utils.js
+    │   ├── vue-loader.conf.js
+    │   ├── webpack.base.conf.js
+    │   ├── webpack.dev.conf.js
+    │   └── webpack.prod.conf.js
+    ├── config
+    │   ├── dev.env.js
+    │   ├── index.js
+    │   ├── prod.env.js
+    │   └── test.env.js
+    ├── index.html       // 这个就是主 HTML 文件(目前还不知道怎么将主 HTML 配置成其他的文件)
+    ├── package-lock.json
+    ├── package.json     // node 配置文件
+    ├── src
+    │   ├── App.vue     // 项目入口组件
+    │   ├── assets
+    │   ├── components  // 组件
+    │   ├── main.js     // 主 js 文件
+    │   └── router      // 路由
+    ├── static
+    └── test
+        ├── e2e
+        └── unit

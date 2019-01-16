@@ -1,0 +1,143 @@
+html,
+body {
+    height: 100%;
+    font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    color: #606c71;
+    counter-reset: h1idx;
+}
+
+p {
+    display: block;
+    margin-block-start: 1em;
+    margin-block-end: 1em;
+    margin-inline-start: 0px;
+    margin-inline-end: 0px;
+}
+
+/** 设置图片居中显示并带有阴影效果 **/
+img {
+    -webkit-box-shadow: 8px 8px 8px rgba(0, 0, 0, 0.5);
+    -moz-box-shadow: 8px 8px 8px rgba(0, 0, 0, 0.5);
+    box-shadow: 8px 8px 8px rgba(0, 0, 0, 0.5);
+    /*IE8语法,不同的IE版本不一样*/
+    -ms-filter:"progid:DXImageTransform.Microsoft.dropshadow(OffX=5, OffY=5, Color='gray')";
+    /*IE6,IE7语法*/
+    filter:progid:DXImageTransform.Microsoft.dropshadow(OffX=5, OffY=5, Color='gray');
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top:8px;
+    margin-bottom:15px;
+    max-width: 100%;
+    height: auto;
+}
+
+/*去掉超链接的下标*/
+a {
+  color: #1e6bb8;
+  text-decoration:none;
+}
+
+/*3D文本*/
+.text3d {
+  color: #fafafa;
+  letter-spacing: 0;
+  text-shadow: 0px 1px 0px #999, 0px 2px 0px #888, 0px 3px 8px #777, 0px 4px 0px #666, 0px 5px 0px #555, 0px 6px 0px #444, 0px 7px 20px #333, 0px 8px 7px #001135;
+}
+
+.overview {
+  padding: 6% 15% 1% 15%;
+  min-height: 512px;
+}
+
+.headline {
+  font-style: italic;
+  font-size: x-large;
+}
+
+ol.archive {
+  list-style-type: none;
+}
+
+.itemdate {
+  padding-top: 1px;
+  float: left;
+  width: 25%;
+  color: #555;
+  text-align: right;
+  font-style: italic;
+}
+
+.itemtitle {
+  margin-left: 32%;
+  text-decoration: none;
+  padding: 1px;
+  color: #204A87;
+  word-wrap: break-word;
+  word-break: break-all;
+}
+
+#footer {
+  margin-bottom:1%;
+  text-align:center;
+}
+
+/* Auto number title:
+ * Ref:
+ * - http://2ality.com/2012/01/numbering-headingshtml.html
+ * - https://support.typora.io/Auto-Numbering/
+ */
+
+/* h1idx is initialized in body */
+h1 { counter-reset: h2idx; }
+h2 { counter-reset: h3idx; }
+h3 { counter-reset: h4idx; }
+h4 { counter-reset: h5idx; }
+h5 { counter-reset: h6idx; }
+h6 {}
+h1:before {
+  counter-increment: h1idx;
+  content: counter(h1idx) ".\0000a0\0000a0";
+}
+/* the pesudoc-class ':before' allow us insert content before the inside of a tag */
+h2:before {
+  counter-increment: h2idx;
+  /*
+   * \0000a0 is a non-breaking space in CSS, here we seperate each index using two such
+   * spaces.
+   */
+  content: counter(h1idx) "." counter(h2idx) ".\0000a0\0000a0";
+}
+h3:before {
+  counter-increment: h3idx;
+  content: counter(h1idx) "." counter(h2idx) "." counter(h3idx) ".\0000a0\0000a0";
+}
+h4:before {
+  counter-increment: h4idx;
+  content:counter(h1idx) "." counter(h2idx) "." counter(h3idx) "." counter(h4idx) ".\0000a0\0000a0";
+}
+h5:before {
+  counter-increment: h5idx;
+  content:counter(h1idx) "." counter(h2idx) "." counter(h3idx) "." counter(h4idx) "." counter(h5idx) ".\0000a0\0000a0";
+}
+h6:before {
+  counter-increment: h6idx;
+  content:counter(h1idx) "." counter(h2idx) "." counter(h3idx) "." counter(h4idx) "." counter(h5idx) "." counter(h6idx) ".\0000a0\0000a0";
+}
+
+/*
+ * headline style
+ */
+div#headtitle {
+  font-size: 2.25rem;
+}
+div#headinfo {
+  font-weight: normal;
+  opacity: 0.7;
+  font-size: 1.15rem;
+}
+div#lastupdate {
+    color: darkorange;
+}

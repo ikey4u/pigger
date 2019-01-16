@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Another Pigger Site</title>
+  <link href="posts/pigger/css/normalize.css" rel="stylesheet" />
+  <link href="posts/pigger/css/pigger.css" rel="stylesheet" />
+</head>
+<body>
+  <div class="overview">
+    <div class="headline text3d">a place to think</div>
+    <hr/>
+    <ol class="archive">
+      {{range .}}
+      <li>
+        <div class="itemdate">{{.Date}}</div>
+        <div class="itemtitle"><a href="{{.Link}}">{{.Title}}</a></div>
+      </li>
+      {{end}}
+    </ol>
+  </div>
+  <hr/>
+  <div id="footer">Since 2018 pigger by Bugnofree</div>
+</body>
+</html>
