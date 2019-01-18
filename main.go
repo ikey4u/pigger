@@ -361,7 +361,7 @@ func renderTitle(block []byte) string {
         fmt.Printf("[Warn] {%s} => Too many title levels, and will be reset to <h6></h6>!\n", line)
         level = 6
     }
-    return fmt.Sprintf("<h%d>%s</h%d>", level, title, level)
+    return fmt.Sprintf("<h%d>%s</h%d>", level, renderLine([]byte(title)), level)
 }
 
 func renderCode(block []byte, outindent int) string {
