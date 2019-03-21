@@ -404,7 +404,7 @@ func getBlockType(block []byte) string {
     block = bytes.TrimPrefix(block, []byte{0xa})
     lines := bytes.Split(block, []byte{0xa})
     flag := string(lines[0])
-    if len(flag) >= 1 && flag[0] == '#' {
+    if len(flag) >= 2 && flag[0:2] == "# " {
         return "TITLE"
     } else if len(flag) >= 3 && flag == "---" {
         return "META"
