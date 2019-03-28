@@ -404,9 +404,17 @@ func getBlockType(block []byte) string {
     block = bytes.TrimPrefix(block, []byte{0xa})
     lines := bytes.Split(block, []byte{0xa})
     flag := string(lines[0])
-    if len(flag) >= 2 && flag[0:2] == "# " {
-        return "TITLE"
-    } else if len(flag) >= 3 && flag == "---" {
+
+    // Title line must begin with one or multiple `#` symbols, and
+    // followed with a space, and then the real title
+    if len(flag) > 0 && flag[0] == '#' {
+        tmpflag := strings.TrimLeft(flag, "#")
+        if len(tmpflag) > 0 && tmpflag[0] == ' ' {
+            return "TITLE"
+        }
+    }
+
+    if len(flag) >= 3 && flag == "---" {
         return "META"
     } else if len(flag) >= 2 && flag[0:2] == "- " {
         return "LIST"
